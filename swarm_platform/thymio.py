@@ -1,63 +1,35 @@
-import asyncio
-from http import client
-
 from tdmclient import ClientAsync
-from .exceptions import ThymioConnectionError, ThymioNotReadyError
-from .logger import get_logger
+
+from .exceptions import RobotConnectionError
 
 
-class Thymio:
+class ThymioConnection:
+
     def __init__(self):
-        self.logger = get_logger("Thymio")
         self.client = None
+        self.client_context = None
+        self.node_context = None
         self.node = None
 
-    def connect(self):
+    async def connect(self):
+
+        self.client = ClientAsync()
+
+        self.client_context = self.client.__enter__()
+
         try:
-            self.client = ClientAsync()
-
-            for _ in range(50):
-                self.client.process_waiting_messages()
-
-                # nodes are discovered asynchronously
-                nodes = list(self.client.nodes)
-
-                if nodes:
-                    self.node = nodes[0]
-                    break
-
-            if self.node is None:
-                raise ThymioConnectionError("No Thymio node discovered")
-
-            self.logger.info("Connected to Thymio")
+            self.node_context = await self.client.lock()
+            self.node = self.node_context.__enter__()
 
         except Exception as e:
-            raise ThymioConnectionError(str(e))
+            raise RobotConnectionError(e)
 
-    def _ensure_connected(self):
-        if self.node is None:
-            raise ThymioConnectionError("Thymio not connected")
+        await self.node.watch(variables=True)
 
-    def set_variables(self, vars_dict: dict):
-        """
-        Low-level variable interface.
-        """
-        self._ensure_connected()
-        return self.node.set_variables(vars_dict)
+    async def disconnect(self):
 
-    def read_variables(self, *names):
-        """
-        Read variables from Thymio.
-        """
-        self._ensure_connected()
+        if self.node_context is not None:
+            self.node_context.__exit__(None, None, None)
 
-        result = {}
-
-        for name in names:
-            result[name] = self.node[name]
-
-        return result
-
-    def close(self):
-        if self.client:
-            self.client.close()
+        if self.client is not None:
+            self.client.__exit__(None, None, None)

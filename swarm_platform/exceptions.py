@@ -1,6 +1,2 @@
-class ThymioConnectionError(Exception):
-    pass
-
-
-class ThymioNotReadyError(Exception):
+class RobotConnectionError(Exception):
     pass

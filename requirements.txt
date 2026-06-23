@@ -1,3 +1,2 @@
-tdmclient
+tdmclient==0.1.21
 numpy
-pyyaml
