@@ -2,7 +2,9 @@ import asyncio
 
 from swarm_platform.command import RobotCommand
 from swarm_platform.controller import Controller 
-from swarm_platform.runner import Runner
+from swarm_platform import Experiment, RobotConfig
+from swarm_platform.logging import CSVLogger
+
 
 class ObstacleAvoidance(Controller):
 
@@ -25,9 +27,14 @@ class ObstacleAvoidance(Controller):
         )
 
 async def main():
-    runner = Runner(
-        ObstacleAvoidance()
+
+    experiment = Experiment(
+        controller=ObstacleAvoidance(),
+        logger=CSVLogger("results/run_001.csv"),
+        config=RobotConfig(control_frequency=20),
     )
-    await runner.run()
+
+    await experiment.run(duration=60)
+
 
 asyncio.run(main())
