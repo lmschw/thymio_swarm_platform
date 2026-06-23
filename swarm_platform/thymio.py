@@ -1,3 +1,6 @@
+import asyncio
+from http import client
+
 from tdmclient import ClientAsync
 from .exceptions import ThymioConnectionError, ThymioNotReadyError
 from .logger import get_logger
@@ -10,15 +13,21 @@ class Thymio:
         self.node = None
 
     def connect(self):
-        """
-        Connect to the local Thymio via TDM.
-        """
         try:
             self.client = ClientAsync()
-            self.node = self.client.wait_for_node()
+
+            for _ in range(50):
+                self.client.process_waiting_messages()
+
+                # nodes are discovered asynchronously
+                nodes = list(self.client.nodes)
+
+                if nodes:
+                    self.node = nodes[0]
+                    break
 
             if self.node is None:
-                raise ThymioNotReadyError("No Thymio node available")
+                raise ThymioConnectionError("No Thymio node discovered")
 
             self.logger.info("Connected to Thymio")
 
