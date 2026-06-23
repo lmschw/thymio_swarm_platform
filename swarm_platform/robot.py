@@ -1,7 +1,6 @@
+import asyncio
+
 from .thymio import ThymioConnection
-from .motors import Motors
-from .leds import LEDs
-from .sensors import Sensors
 
 
 class Robot:
@@ -10,12 +9,67 @@ class Robot:
 
         self.connection = ThymioConnection()
 
-        self.motors = Motors(self.connection)
-        self.leds = LEDs(self.connection)
-        self.sensors = Sensors(self.connection)
+    # Context manager
+    async def __aenter__(self):
+        await self.connect()
+        return self
 
+    async def __aexit__(self, exc_type, exc, tb):
+        try:
+            await self.stop()
+        finally:
+            await self.disconnect()
+
+    
+    # Connection
     async def connect(self):
         await self.connection.connect()
 
     async def disconnect(self):
         await self.connection.disconnect()
+
+
+    # Motors
+    async def drive(self, left: int, right: int):
+
+        await self.connection.node.set_variables({
+            "motor.left.target": [int(left)],
+            "motor.right.target": [int(right)],
+        })
+
+    async def stop(self):
+        await self.drive(0, 0)
+
+    # LEDs
+    async def top_led(self, r: int, g: int, b: int):
+
+        await self.connection.node.set_variables({
+            "leds.top": [int(r), int(g), int(b)]
+        })
+
+    # Sensors
+    async def proximity(self):
+
+        return list(self.connection.node["prox.horizontal"])
+
+    async def ground(self):
+
+        return list(self.connection.node["prox.ground.delta"])
+
+    async def buttons(self):
+
+        return {
+            "forward": self.connection.node["button.forward"],
+            "backward": self.connection.node["button.backward"],
+            "left": self.connection.node["button.left"],
+            "right": self.connection.node["button.right"],
+            "center": self.connection.node["button.center"],
+        }
+
+    async def accelerometer(self):
+
+        return list(self.connection.node["acc"])
+
+    async def temperature(self):
+
+        return self.connection.node["temperature"]

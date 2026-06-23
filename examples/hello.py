@@ -2,18 +2,18 @@ import asyncio
 
 from swarm_platform import Robot
 
+
 async def hello():
-    robot = Robot()
-    await robot.connect()
 
-    print("Connected!")
+    async with Robot() as robot:
 
-    await robot.leds.top(0, 32, 0)
+        await robot.top_led(0, 32, 0)
 
-    print(await robot.sensors.proximity())
+        while True:
 
-    await asyncio.sleep(5)
-    await robot.motors.stop()
-    await robot.disconnect()
+            print(await robot.proximity())
+
+            await asyncio.sleep(0.05)
+
 
 asyncio.run(hello())
