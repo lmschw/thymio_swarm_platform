@@ -15,7 +15,7 @@ class Thymio:
         """
         try:
             self.client = ClientAsync()
-            self.node = self.client.awake.wait_for_node()
+            self.node = self.client.wait_for_node()
 
             if self.node is None:
                 raise ThymioNotReadyError("No Thymio node available")
