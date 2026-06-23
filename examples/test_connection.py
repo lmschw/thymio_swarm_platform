@@ -1,4 +1,4 @@
-from platform.thymio import Thymio
+from swarm_platform.thymio import Thymio
 
 robot = Thymio()
 
