@@ -2,13 +2,13 @@ import asyncio
 
 from .thymio import ThymioConnection
 from .state import RobotState
-
 from .command import RobotCommand
+from .config import RobotConfig
 
 class Robot:
 
-    def __init__(self):
-
+    def __init__(self, config: RobotConfig | None = None):
+        self.config = config or RobotConfig()
         self.connection = ThymioConnection()
 
     # Context manager
