@@ -1,7 +1,9 @@
 import asyncio
 
 from .thymio import ThymioConnection
+from .state import RobotState
 
+from .command import RobotCommand
 
 class Robot:
 
@@ -73,3 +75,26 @@ class Robot:
     async def temperature(self):
 
         return self.connection.node["temperature"]
+    
+    async def state(self):
+        return RobotState(
+            proximity=list(self.connection.node["prox.horizontal"]),
+            ground=list(self.connection.node["prox.ground.delta"]),
+            accelerometer=list(self.connection.node["acc"]),
+            buttons={
+                "forward": bool(self.connection.node["button.forward"]),
+                "backward": bool(self.connection.node["button.backward"]),
+                "left": bool(self.connection.node["button.left"]),
+                "right": bool(self.connection.node["button.right"]),
+                "center": bool(self.connection.node["button.center"]),
+            },
+            temperature=self.connection.node["temperature"],
+        )
+    
+    async def apply(self, command: RobotCommand):
+        await self.drive(
+            command.left_motor,
+            command.right_motor,
+        )
+
+        await self.top_led(*command.top_led)
