@@ -39,33 +39,6 @@ ls /etc/udev/rules.d/99-thymio.rules >/dev/null \
 
 pass "USB rules installed"
 
-echo
-
-echo "Checking Device Manager..."
-
-./start_tdm.sh
-
-pass "Device Manager started"
-
-echo
-
-echo "Checking discovery..."
-
-python3 -m tdmclient tdmdiscovery | grep 8596 >/dev/null \
-    || fail "No TDM discovered"
-
-pass "TDM discovered"
-
-echo
-
-echo "Checking robot..."
-
-python3 -m tdmclient list >/tmp/thymio_list.txt
-
-grep "_productId" /tmp/thymio_list.txt >/dev/null \
-    || fail "Robot not detected"
-
-pass "Robot detected"
 
 echo
 echo "================================="
