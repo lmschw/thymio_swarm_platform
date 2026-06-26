@@ -20,8 +20,6 @@ sudo apt install -y \
     python3-venv \
     python3-pip \
     flatpak \
-    xrdp \
-    libatlas-base-dev \
     wget \
     curl
 
@@ -29,7 +27,7 @@ sudo apt install -y \
 # Synchronize time
 #
 
-sudo timedatectl set-ntp true
+sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -d' ' -f5-8)Z"
 
 #
 # Install Thymio Suite
