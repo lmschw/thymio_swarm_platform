@@ -3,6 +3,7 @@ import asyncio
 from tdmclient import ClientAsync
 
 from .exceptions import RobotConnectionError
+from .utils import ensure_tdm_running
 
 
 class ThymioConnection:
@@ -19,16 +20,23 @@ class ThymioConnection:
         self.poll_task = None
 
     async def connect(self):
-
+        ensure_tdm_running()
         self.client = ClientAsync()
         self.client_context = self.client.__enter__()
 
         try:
             self.node_context = await self.client.lock()
             self.node = self.node_context.__enter__()
-
         except Exception as e:
-            raise RobotConnectionError(e)
+            raise RobotConnectionError(
+                "Unable to connect to the Thymio.\n\n"
+                "Possible reasons:\n"
+                " • No Thymio is connected.\n"
+                " • USB permissions are incorrect.\n"
+                " • Thymio Device Manager failed to start.\n"
+                " • Another program has locked the robot.\n\n"
+                f"Original error:\n{e}"
+            )
 
         await self.node.watch(variables=True)
 
