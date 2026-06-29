@@ -2,7 +2,12 @@ import asyncio
 from tdmclient import ClientAsync
 
 async def main():
-    client = ClientAsync()
+    client = ClientAsync(
+        zeroconf=False,
+        tdm_addr="127.0.0.1",
+        tdm_port=8596,
+    )
+
     client.__enter__()
 
     print("Waiting...")
@@ -10,7 +15,6 @@ async def main():
     node = await client.wait_for_node()
 
     print(node)
-    print(type(node))
 
     await node.lock()
 
