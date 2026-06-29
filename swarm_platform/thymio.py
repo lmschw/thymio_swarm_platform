@@ -108,11 +108,14 @@ class ThymioConnection:
 
         self.node = None
 
+    async def process_messages(self):
+        self.client.process_waiting_messages()
+
     async def _poll(self):
 
         while self.running:
 
-            self.client.process_waiting_messages()
+            await self.process_messages()
 
             await asyncio.sleep(0.01)
 

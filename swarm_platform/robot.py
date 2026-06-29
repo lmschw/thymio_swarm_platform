@@ -51,27 +51,29 @@ class Robot:
 
     # Sensors
     async def proximity_horizontal(self):
-        self.client.process_waiting_messages()
-        return list(self.node.var.get("prox.horizontal"))
-    
+        await self.connection.process_messages()
+        return list(self.connection.node.var.get("prox.horizontal"))
+
     async def proximity_ground_delta(self):
-        self.client.process_waiting_messages()
-        return list(self.node.var.get("prox.delta"))
+        await self.connection.process_messages()
+        return list(self.connection.node.var.get("prox.delta"))
 
     async def buttons(self):
+        await self.connection.process_messages()
         return {
-            "forward": self.node.var.get("button.forward"),
-            "backward": self.node.var.get("button.backward"),
-            "left": self.node.var.get("button.left"),
-            "right": self.node.var.get("button.right"),
-            "center": self.node.var.get("button.center"),
+            "forward": self.connection.node.var.get("button.forward"),
+            "backward": self.connection.node.var.get("button.backward"),
+            "left": self.connection.node.var.get("button.left"),
+            "right": self.connection.node.var.get("button.right"),
+            "center": self.connection.node.var.get("button.center"),
         }
 
     async def accelerometer(self):
+        await self.connection.process_messages()
         return list(self.node.var.get("acc"))
 
     async def temperature(self):
-
+        await self.connection.process_messages()
         return self.connection.node["temperature"]
     
     async def state(self):
