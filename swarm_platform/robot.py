@@ -61,7 +61,10 @@ class Robot:
     async def proximity_ground_reflected(self):
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.reflected"))
-
+    
+    async def proximity_ground_ambiant(self):
+        await self.connection.process_messages()
+        return list(self.connection.node.var.get("prox.ground.ambiant"))
 
     async def buttons(self):
         await self.connection.process_messages()
@@ -75,7 +78,7 @@ class Robot:
 
     async def accelerometer(self):
         await self.connection.process_messages()
-        return list(self.node.var.get("acc"))
+        return list(self.connection.node.var.get("acc"))
 
     async def temperature(self):
         await self.connection.process_messages()
