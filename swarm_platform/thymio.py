@@ -43,40 +43,26 @@ class ThymioConnection:
 
     async def connect(self):
 
-        print("1. Ensuring TDM...")
         ensure_tdm_running()
 
-        print("2. Creating client...")
         self.client = ClientAsync()
-
-        print("3. Entering client...")
         self.client.__enter__()
 
-        print("4. Discovering node...")
-        await self._discover_node()
-        print(self.node)
-        print("status:", getattr(self.node, "status", None))
-        print("id:", getattr(self.node, "id_str", None))
-        print("props:", vars(self.node))
+        print("Waiting for robot...")
 
-        print("5. Locking node...")
-        self.node = await self._discover_node()
+        self.node = await self.client.wait_for_node()
 
-        try:
-            await self.node.unlock()
-        except Exception:
-            pass
+        print("Robot:", self.node)
 
         await self.node.lock()
 
-        print("6. Watching variables...")
-        await self.node.watch(variables=True, events=True)
+        await self.node.watch(
+            variables=True,
+            events=True,
+        )
 
-        print("7. Starting poll task...")
         self.running = True
         self.poll_task = asyncio.create_task(self._poll())
-
-        print("Connected!")
 
     async def disconnect(self):
 
