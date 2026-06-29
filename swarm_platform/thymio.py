@@ -74,6 +74,15 @@ class ThymioConnection:
             events=True,
         )
 
+        # wait for first variable snapshot
+        for _ in range(50):
+            self.client.process_waiting_messages()
+            if hasattr(self.node, "prox") and hasattr(self.node.prox, "horizontal"):
+                break
+            await asyncio.sleep(0.05)
+        else:
+            raise RobotConnectionError("Node never published prox.horizontal")
+
         self.running = True
         self.poll_task = asyncio.create_task(self._poll())
 
