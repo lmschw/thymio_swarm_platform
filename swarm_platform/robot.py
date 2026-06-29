@@ -50,25 +50,25 @@ class Robot:
         })
 
     # Sensors
-    async def proximity(self):
-        return await self.connection.read_prox_horizontal()
-
-    async def ground(self):
-        return list(self.connection.node["prox.ground.delta"])
+    async def proximity_horizontal(self):
+        self.client.process_waiting_messages()
+        return list(self.node.var.get("prox.horizontal"))
+    
+    async def proximity_ground_delta(self):
+        self.client.process_waiting_messages()
+        return list(self.node.var.get("prox.delta"))
 
     async def buttons(self):
-
         return {
-            "forward": self.connection.node["button.forward"],
-            "backward": self.connection.node["button.backward"],
-            "left": self.connection.node["button.left"],
-            "right": self.connection.node["button.right"],
-            "center": self.connection.node["button.center"],
+            "forward": self.node.var.get("button.forward"),
+            "backward": self.node.var.get("button.backward"),
+            "left": self.node.var.get("button.left"),
+            "right": self.node.var.get("button.right"),
+            "center": self.node.var.get("button.center"),
         }
 
     async def accelerometer(self):
-
-        return list(self.connection.node["acc"])
+        return list(self.node.var.get("acc"))
 
     async def temperature(self):
 
@@ -76,17 +76,11 @@ class Robot:
     
     async def state(self):
         return RobotState(
-            proximity=await self.connection.read_prox_horizontal(),
-            ground=list(self.connection.node["prox.ground.delta"]),
-            accelerometer=list(self.connection.node["acc"]),
-            buttons={
-                "forward": bool(self.connection.node["button.forward"]),
-                "backward": bool(self.connection.node["button.backward"]),
-                "left": bool(self.connection.node["button.left"]),
-                "right": bool(self.connection.node["button.right"]),
-                "center": bool(self.connection.node["button.center"]),
-            },
-            temperature=self.connection.node["temperature"],
+            proximity=await self.proximity_horizontal(),
+            ground=await self.proximity_ground_delta(),
+            accelerometer=await self.accelerometer(),
+            buttons=await self.buttons(),
+            temperature=await self.temperature(),
         )
     
     async def apply(self, command: RobotCommand):

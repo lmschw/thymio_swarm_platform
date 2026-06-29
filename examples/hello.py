@@ -11,7 +11,7 @@ async def hello():
 
         while True:
 
-            print(await robot.proximity())
+            print(await robot.proximity_horizontal())
 
             await asyncio.sleep(0.05)
 

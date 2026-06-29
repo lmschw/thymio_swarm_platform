@@ -108,10 +108,6 @@ class ThymioConnection:
 
         self.node = None
 
-    async def read_prox_horizontal(self):
-        self.client.process_waiting_messages()
-        return list(self.node.var.get("prox.horizontal"))
-
     async def _poll(self):
 
         while self.running:
