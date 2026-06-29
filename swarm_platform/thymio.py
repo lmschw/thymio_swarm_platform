@@ -53,18 +53,23 @@ class ThymioConnection:
         self.client.__enter__()
 
         print("4. Discovering node...")
+        print(type(self.node))
         await self._discover_node()
 
         print("5. Locking node...")
-        self.node_context = await self.client.lock()
+        self.node = await self._discover_node()
 
-        print("6. Entering node...")
-        self.node = self.node_context.__enter__()
+        try:
+            await self.node.unlock()
+        except Exception:
+            pass
 
-        print("7. Watching variables...")
+        await self.node.lock()
+
+        print("6. Watching variables...")
         await self.node.watch(variables=True, events=True)
 
-        print("8. Starting poll task...")
+        print("7. Starting poll task...")
         self.running = True
         self.poll_task = asyncio.create_task(self._poll())
 
@@ -85,14 +90,10 @@ class ThymioConnection:
 
             self.poll_task = None
 
-        if self.node_context is not None:
-
-            try:
-                self.node_context.__exit__(None, None, None)
-            except Exception:
-                pass
-
-            self.node_context = None
+        try:
+            await self.node.unlock()
+        except Exception:
+            pass
 
         if self.client is not None:
 
