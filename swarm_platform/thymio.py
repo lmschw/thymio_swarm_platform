@@ -53,8 +53,11 @@ class ThymioConnection:
         self.client.__enter__()
 
         print("4. Discovering node...")
-        print(type(self.node))
         await self._discover_node()
+        print(self.node)
+        print("status:", getattr(self.node, "status", None))
+        print("id:", getattr(self.node, "id_str", None))
+        print("props:", vars(self.node))
 
         print("5. Locking node...")
         self.node = await self._discover_node()
