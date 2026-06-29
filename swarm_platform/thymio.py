@@ -22,6 +22,9 @@ class ThymioConnection:
 
         start = asyncio.get_running_loop().time()
 
+        stable_node = None
+        stable_since = None
+
         while asyncio.get_running_loop().time() - start < timeout:
 
             self.client.process_waiting_messages()
@@ -29,28 +32,27 @@ class ThymioConnection:
             nodes = list(self.client.nodes)
 
             if not nodes:
+                stable_node = None
+                stable_since = None
                 await asyncio.sleep(0.1)
                 continue
 
             node = nodes[0]
 
-            # IMPORTANT: check deeper readiness, not just existence
-            status = getattr(node, "status", None)
+            # detect stability (key fix)
+            if stable_node != node:
+                stable_node = node
+                stable_since = asyncio.get_running_loop().time()
 
-            if status in ("connected", "ready", None):
-                try:
-                    # probe lockability (this is the real signal)
-                    await node.lock()
-                    await node.unlock()
+            else:
+                # node stable for > 0.5s → ready
+                if asyncio.get_running_loop().time() - stable_since > 0.5:
                     return node
 
-                except Exception:
-                    pass
+            await asyncio.sleep(0.1)
 
-            await asyncio.sleep(0.2)
-
-        raise RobotConnectionError("Node never became ready")
-
+        raise RobotConnectionError("No stable Thymio node detected")
+    
     async def connect(self):
 
         ensure_tdm_running()
@@ -58,12 +60,13 @@ class ThymioConnection:
         self.client = ClientAsync()
         self.client.__enter__()
 
-        print("Waiting for ready node...")
+        print("Waiting for stable node...")
 
         self.node = await self._wait_for_ready_node()
 
-        print("Node ready:", self.node)
+        print("Node detected:", self.node)
 
+        # ONLY NOW do we lock
         await self.node.lock()
 
         await self.node.watch(
