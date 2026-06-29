@@ -1,44 +1,35 @@
 import platform
 import shutil
-import socket
 import subprocess
 import time
 
-
-TDM_HOST = "127.0.0.1"
-TDM_PORT = 8596
+from tdmclient import ClientAsync
 
 
-def _tdm_available():
-
+def _tdm_ready():
+    """
+    Real readiness check: can tdmclient actually connect?
+    """
     try:
-        with socket.create_connection((TDM_HOST, TDM_PORT), timeout=0.5):
-            return True
-    except OSError:
+        client = ClientAsync()
+        client.__enter__()
+        client.__exit__(None, None, None)
+        return True
+    except Exception:
         return False
 
 
-def ensure_tdm_running(timeout=15):
-
-    #
-    # Windows/macOS:
-    # User starts Thymio Suite manually.
-    #
+def ensure_tdm_running(timeout=20):
 
     if platform.system() != "Linux":
         return
 
-    #
-    # Already running?
-    #
-
-    if _tdm_available():
+    # Already usable?
+    if _tdm_ready():
         return
 
     if shutil.which("flatpak") is None:
-        raise RuntimeError(
-            "Flatpak not installed."
-        )
+        raise RuntimeError("Flatpak not installed")
 
     print("Starting Thymio Device Manager...")
 
@@ -57,12 +48,10 @@ def ensure_tdm_running(timeout=15):
 
     while time.time() - start < timeout:
 
-        if _tdm_available():
-            print("Thymio Device Manager is running.")
+        if _tdm_ready():
+            print("Thymio Device Manager is ready.")
             return
 
-        time.sleep(0.25)
+        time.sleep(0.5)
 
-    raise RuntimeError(
-        "Timed out waiting for the Thymio Device Manager."
-    )
+    raise RuntimeError("TDM did not become ready in time")
