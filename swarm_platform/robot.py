@@ -56,7 +56,12 @@ class Robot:
 
     async def proximity_ground_delta(self):
         await self.connection.process_messages()
-        return list(self.connection.node.var.get("prox.delta"))
+        return list(self.connection.node.var.get("prox.ground.delta"))
+    
+    async def proximity_ground_reflected(self):
+        await self.connection.process_messages()
+        return list(self.connection.node.var.get("prox.ground.reflected"))
+
 
     async def buttons(self):
         await self.connection.process_messages()
