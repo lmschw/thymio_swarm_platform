@@ -51,11 +51,9 @@ class Robot:
 
     # Sensors
     async def proximity(self):
-
-        return list(self.connection.node["prox.horizontal"])
+        return await self.connection.read_prox_horizontal()
 
     async def ground(self):
-
         return list(self.connection.node["prox.ground.delta"])
 
     async def buttons(self):
@@ -78,7 +76,7 @@ class Robot:
     
     async def state(self):
         return RobotState(
-            proximity=list(self.connection.node["prox.horizontal"]),
+            proximity=await self.connection.read_prox_horizontal(),
             ground=list(self.connection.node["prox.ground.delta"]),
             accelerometer=list(self.connection.node["acc"]),
             buttons={
