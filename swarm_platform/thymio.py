@@ -18,7 +18,7 @@ class ThymioConnection:
         self.running = False
         self.poll_task = None
 
-    async def _discover_node(self, timeout=10):
+    async def _wait_for_ready_node(self, timeout=10):
 
         start = asyncio.get_running_loop().time()
 
@@ -28,18 +28,28 @@ class ThymioConnection:
 
             nodes = list(self.client.nodes)
 
-            if nodes:
-                return nodes[0]
+            if not nodes:
+                await asyncio.sleep(0.1)
+                continue
 
-            await asyncio.sleep(0.1)
+            node = nodes[0]
 
-        raise RobotConnectionError(
-            "No Thymio detected.\n"
-            "Check that:\n"
-            " • the robot is connected\n"
-            " • the robot is powered on\n"
-            " • the Device Manager can see it"
-        )
+            # IMPORTANT: check deeper readiness, not just existence
+            status = getattr(node, "status", None)
+
+            if status in ("connected", "ready", None):
+                try:
+                    # probe lockability (this is the real signal)
+                    await node.lock()
+                    await node.unlock()
+                    return node
+
+                except Exception:
+                    pass
+
+            await asyncio.sleep(0.2)
+
+        raise RobotConnectionError("Node never became ready")
 
     async def connect(self):
 
@@ -48,11 +58,11 @@ class ThymioConnection:
         self.client = ClientAsync()
         self.client.__enter__()
 
-        print("Waiting for robot...")
+        print("Waiting for ready node...")
 
-        self.node = await self.client.wait_for_node()
+        self.node = await self._wait_for_ready_node()
 
-        print("Robot:", self.node)
+        print("Node ready:", self.node)
 
         await self.node.lock()
 
