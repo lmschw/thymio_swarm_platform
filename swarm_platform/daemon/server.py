@@ -1,5 +1,7 @@
 import asyncio
 import socket
+import json
+import asyncio
 
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.protocol.messages import Ping, Status, Stop, StartExperiment
@@ -60,12 +62,17 @@ class SwarmDaemon:
         return EXPERIMENTS[name]
     
     async def run(self, host="0.0.0.0", port=9000):
+
         await self.init()
-        server = await asyncio.start_server(
-            self._handle_connection,
-            host,
-            port,
-        )
+
+        async def announcer():
+            while True:
+                self.broadcast_announce()
+                await asyncio.sleep(2)
+
+        asyncio.create_task(announcer())
+
+        server = await asyncio.start_server(self._handle_connection, host, port)
 
         async with server:
             await server.serve_forever()
@@ -90,16 +97,15 @@ class SwarmDaemon:
         writer.close()
         await writer.wait_closed()
 
-    async def register_with_swarm(self):
+    def broadcast_announce(self):
+
         msg = {
-            "type": "register",
-            "id": self.robot_id,
-            "ip": self.get_ip(),
+            "type": "announce",
+            "id": socket.gethostname(),
             "port": 9000
         }
-        await self.send_to_registry(msg)
 
-    def get_ip():
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        return s.getsockname()[0]
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+        sock.sendto(json.dumps(msg).encode(), ("255.255.255.255", 9999))
