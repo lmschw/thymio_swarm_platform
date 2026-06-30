@@ -10,6 +10,9 @@ from swarm_platform.controllers.experiments import EXPERIMENTS
 
 class SwarmDaemon:
 
+    REGISTRY_IP = "10.15.2.96"
+    REGISTRY_PORT = 9100
+
     def __init__(self):
         self.robot = Robot()
         self.experiment = None
@@ -17,6 +20,7 @@ class SwarmDaemon:
 
     async def init(self):
         await self.robot.connect()
+        await self.register()
 
     async def handle(self, msg: dict):
         t = msg.get("type")
@@ -97,15 +101,29 @@ class SwarmDaemon:
         writer.close()
         await writer.wait_closed()
 
-    def broadcast_announce(self):
+
+    def get_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+
+
+    async def register(self):
 
         msg = {
-            "type": "announce",
+            "type": "register",
             "id": socket.gethostname(),
+            "ip": get_ip(),
             "port": 9000
         }
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        reader, writer = await asyncio.open_connection(
+            REGISTRY_IP,
+            REGISTRY_PORT
+        )
 
-        sock.sendto(json.dumps(msg).encode(), ("255.255.255.255", 9999))
+        writer.write((json.dumps(msg) + "\n").encode())
+        await writer.drain()
+
+        writer.close()
+        await writer.wait_closed()
