@@ -1,4 +1,6 @@
 import asyncio
+import socket
+
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.protocol.messages import Ping, Status, Stop, StartExperiment
 from swarm_platform.robot.robot import Robot
@@ -87,3 +89,17 @@ class SwarmDaemon:
 
         writer.close()
         await writer.wait_closed()
+
+    async def register_with_swarm(self):
+        msg = {
+            "type": "register",
+            "id": self.robot_id,
+            "ip": self.get_ip(),
+            "port": 9000
+        }
+        await self.send_to_registry(msg)
+
+    def get_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]

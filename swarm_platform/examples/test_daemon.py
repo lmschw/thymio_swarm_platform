@@ -2,7 +2,7 @@ import asyncio
 import json
 
 
-async def send(msg, host="thymio-05", port=9000):
+async def send(msg, host="10.15.2.85", port=9000):
 
     reader, writer = await asyncio.open_connection(host, port)
 
