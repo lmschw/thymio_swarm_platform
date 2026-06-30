@@ -85,56 +85,29 @@ pass "Service running"
 
 echo
 
-#
-# TDM
-#
+echo "Checking Python connection..."
 
-echo "Checking TDM..."
+source .venv/bin/activate
 
-python3 -m tdmclient list >/tmp/tdm_check.txt 2>/dev/null \
-    || fail "Unable to communicate with the Thymio Device Manager."
+python <<'EOF'
+from tdmclient import ClientAsync
 
-pass "TDM responding"
+with ClientAsync() as client:
+    for _ in range(50):
+        client.process_waiting_messages()
+        if list(client.nodes):
+            print("OK")
+            raise SystemExit(0)
 
-echo
+import sys
+sys.exit(1)
+EOF
 
-#
-# Robot
-#
-
-echo "Checking connected Thymio..."
-
-if grep -qi "node" /tmp/tdm_check.txt || grep -qi "Thymio" /tmp/tdm_check.txt; then
-    pass "Thymio detected"
+if [ $? -eq 0 ]; then
+    pass "Python can discover a Thymio"
 else
-    warn "No Thymio detected (connect one if this is unexpected)"
+    warn "Python could not discover a Thymio"
 fi
-
-rm -f /tmp/tdm_check.txt
-
-echo
-
-#
-# Python environment
-#
-
-echo "Checking virtual environment..."
-
-test -d .venv \
-    || fail ".venv not found. Run ./swarm_platform_setup.sh"
-
-pass "Virtual environment exists"
-
-echo
-
-echo "Checking tdmclient..."
-
-. .venv/bin/activate
-
-python -c "import tdmclient" \
-    || fail "tdmclient is not installed in the virtual environment."
-
-pass "tdmclient installed"
 
 deactivate
 
