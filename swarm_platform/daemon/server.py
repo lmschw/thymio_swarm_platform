@@ -102,24 +102,23 @@ class SwarmDaemon:
         await writer.wait_closed()
 
 
-    def get_ip():
+    def get_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         return s.getsockname()[0]
-
 
     async def register(self):
 
         msg = {
             "type": "register",
             "id": socket.gethostname(),
-            "ip": get_ip(),
+            "ip": self.get_ip(),
             "port": 9000
         }
 
-        reader, writer = await asyncio.open_connection(
-            REGISTRY_IP,
-            REGISTRY_PORT
+        _, writer = await asyncio.open_connection(
+            self.REGISTRY_IP,
+            self.REGISTRY_PORT
         )
 
         writer.write((json.dumps(msg) + "\n").encode())
