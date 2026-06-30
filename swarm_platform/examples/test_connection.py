@@ -1,8 +1,15 @@
-import socket
+import asyncio
+from swarm.client import SwarmClient
 
-HOST = "thymio-05"   # or the Pi's IP if hostname doesn't work
-PORT = 9000
+async def main():
 
-s = socket.create_connection((HOST, PORT), timeout=5)
-print(s.recv(1024))
-s.close()
+    swarm = SwarmClient("10.15.2.96")
+
+    robots = await swarm.list_robots()
+
+    print("Active robots:")
+    for rid, r in robots.items():
+        print(rid, r)
+
+
+asyncio.run(main())

@@ -10,8 +10,8 @@ from swarm_platform.controllers.experiments import EXPERIMENTS
 
 class SwarmDaemon:
 
-    REGISTRY_IP = "10.15.2.96"
-    REGISTRY_PORT = 9100
+    COORDINATOR_IP = "10.15.3.202" 
+    COORDINATOR_PORT = 9100
 
     def __init__(self):
         self.robot = Robot()
@@ -19,8 +19,9 @@ class SwarmDaemon:
         self.running_experiment = False
 
     async def init(self):
-        await self.robot.connect()
         await self.register()
+        asyncio.create_task(self.heartbeat_loop())
+        await self.robot.connect()
 
     async def handle(self, msg: dict):
         t = msg.get("type")
@@ -67,16 +68,24 @@ class SwarmDaemon:
     
     async def run(self, host="0.0.0.0", port=9000):
 
-        await self.init()
+        print("Connecting robot...")
+        await self.robot.connect()
 
-        async def announcer():
-            while True:
-                self.broadcast_announce()
-                await asyncio.sleep(2)
+        print("Robot connected")
 
-        asyncio.create_task(announcer())
+        print("Registering...")
+        await self.register()
 
-        server = await asyncio.start_server(self._handle_connection, host, port)
+        print("Registered")
+
+        print("Starting TCP server...")
+        server = await asyncio.start_server(
+            self._handle_connection,
+            host,
+            port,
+        )
+
+        print("TCP server started")
 
         async with server:
             await server.serve_forever()
@@ -108,17 +117,16 @@ class SwarmDaemon:
         return s.getsockname()[0]
 
     async def register(self):
-
         msg = {
             "type": "register",
-            "id": socket.gethostname(),
+            "robot_id": socket.gethostname(),
             "ip": self.get_ip(),
             "port": 9000
         }
 
         _, writer = await asyncio.open_connection(
-            self.REGISTRY_IP,
-            self.REGISTRY_PORT
+            self.COORDINATOR_IP,
+            self.COORDINATOR_PORT
         )
 
         writer.write((json.dumps(msg) + "\n").encode())
@@ -126,3 +134,27 @@ class SwarmDaemon:
 
         writer.close()
         await writer.wait_closed()
+
+    async def heartbeat_loop(self):
+        while True:
+            try:
+                msg = {
+                    "type": "heartbeat",
+                    "robot_id": socket.gethostname()
+                }
+
+                reader, writer = await asyncio.open_connection(
+                    self.COORDINATOR_IP,
+                    self.COORDINATOR_PORT
+                )
+
+                writer.write((json.dumps(msg) + "\n").encode())
+                await writer.drain()
+
+                writer.close()
+                await writer.wait_closed()
+
+            except Exception:
+                pass
+
+            await asyncio.sleep(5)
