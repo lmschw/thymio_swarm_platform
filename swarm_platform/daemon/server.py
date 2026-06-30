@@ -67,13 +67,8 @@ class SwarmDaemon:
         return EXPERIMENTS[name]
     
     async def run(self, host="0.0.0.0", port=9000):
-
-        print("Connecting robot...")
         await self.robot.connect()
-
-        print("Robot connected")
-
-        print("Registering...")
+        asyncio.create_task(self.heartbeat_loop())  # start immediately
         await self.register()
 
         print("Registered")
