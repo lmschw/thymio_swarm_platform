@@ -41,11 +41,11 @@ async def handle(reader, writer):
     # HEARTBEAT
     # -------------------------
     elif msg_type == "heartbeat":
-        rid = msg["robot_id"]
-        if rid in ROBOTS:
-            ROBOTS[rid]["last_seen"] = time.time()
+        now = time.time()
+        print(f"[HEARTBEAT] {msg['robot_id']} delta={now - ROBOTS[msg['robot_id']]['last_seen'] if msg['robot_id'] in ROBOTS else 'NEW'}")
 
-        writer.write(b'{"type":"ok"}\n')
+        if msg["robot_id"] in ROBOTS:
+            ROBOTS[msg["robot_id"]]["last_seen"] = now
 
     # -------------------------
     # LIST ROBOTS (laptop uses this)
@@ -72,7 +72,7 @@ async def cleanup():
                 to_remove.append(rid)
 
         for rid in to_remove:
-            print(f"[REMOVE] {rid}")
+            print(f"[REMOVE] {rid} last_seen={now - r['last_seen']:.2f}s ago")
             del ROBOTS[rid]
 
         await asyncio.sleep(2)
