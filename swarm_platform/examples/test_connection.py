@@ -1,9 +1,9 @@
 import asyncio
-from swarm.client import SwarmClient
+from swarm_platform.laptop.client import SwarmClient
 
 async def main():
 
-    swarm = SwarmClient("10.15.2.96")
+    swarm = SwarmClient("10.15.3.202")
 
     robots = await swarm.list_robots()
 

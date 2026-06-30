@@ -5,7 +5,7 @@ import time
 ROBOTS = {}  # robot_id -> {ip, port, last_seen}
 
 
-HEARTBEAT_TIMEOUT = 10  # seconds
+HEARTBEAT_TIMEOUT = 30  # seconds
 
 
 async def handle(reader, writer):
