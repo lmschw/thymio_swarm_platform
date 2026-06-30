@@ -3,7 +3,7 @@ from swarm_platform.laptop.client import SwarmClient
 
 async def main():
 
-    swarm = SwarmClient("10.15.3.202")
+    swarm = SwarmClient("10.15.2.63")
 
     robots = await swarm.list_robots()
 

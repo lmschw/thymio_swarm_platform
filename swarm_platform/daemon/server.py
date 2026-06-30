@@ -10,7 +10,7 @@ from swarm_platform.controllers.experiments import EXPERIMENTS
 
 class SwarmDaemon:
 
-    COORDINATOR_IP = "10.15.3.202" 
+    COORDINATOR_IP = "10.15.2.63" 
     COORDINATOR_PORT = 9100
 
     def __init__(self):
