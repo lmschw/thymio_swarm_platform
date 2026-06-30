@@ -11,6 +11,9 @@ class Experiment:
         self.config = config or RobotConfig()
         self.robot = Robot(self.config)
 
+    async def setup(self):
+        pass
+
     async def run(self, duration=None):
         dt = 1.0 / self.config.control_frequency
         async with self.robot:
@@ -33,3 +36,6 @@ class Experiment:
                 await self.controller.cleanup(self.robot)
                 if self.logger:
                     self.logger.stop()
+
+    async def stop(self):
+        pass
