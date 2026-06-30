@@ -1,9 +1,9 @@
 import asyncio
 
-from .thymio import ThymioConnection
+from .robot.thymio import ThymioConnection
 from .state import RobotState
-from .command import RobotCommand
-from .config import RobotConfig
+from ..protocol.command import RobotCommand
+from ..utils.config import RobotConfig
 
 class Robot:
 

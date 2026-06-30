@@ -1,9 +1,9 @@
 import asyncio
 
-from swarm_platform.command import RobotCommand
-from swarm_platform.controller import Controller 
+from swarm_platform.protocol.command import RobotCommand
+from swarm_platform.controllers.controller import Controller 
 from swarm_platform import Experiment, RobotConfig
-from swarm_platform.logging import CSVLogger
+from swarm_platform.utils.logging import CSVLogger
 
 
 class ObstacleAvoidance(Controller):

@@ -1,7 +1,7 @@
 import asyncio
 
-from .robot import Robot
-from .config import RobotConfig
+from ..robot.robot import Robot
+from ..utils.config import RobotConfig
 
 class Experiment:
 

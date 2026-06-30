@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-from .state import RobotState
-from .command import RobotCommand
+from ..robot.state import RobotState
+from ..protocol.command import RobotCommand
 
 
 class Controller(ABC):
