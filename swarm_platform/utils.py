@@ -1,7 +1,4 @@
-import platform
-import shutil
-import subprocess
-import time
+import socket
 
 from tdmclient import ClientAsync
 
@@ -19,39 +16,14 @@ def _tdm_ready():
         return False
 
 
-def ensure_tdm_running(timeout=20):
-
-    if platform.system() != "Linux":
-        return
-
-    # Already usable?
-    if _tdm_ready():
-        return
-
-    if shutil.which("flatpak") is None:
-        raise RuntimeError("Flatpak not installed")
-
-    print("Starting Thymio Device Manager...")
-
-    subprocess.Popen(
-        [
-            "flatpak",
-            "run",
-            "--command=thymio-device-manager",
-            "org.mobsya.ThymioSuite",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-    start = time.time()
-
-    while time.time() - start < timeout:
-
-        if _tdm_ready():
-            print("Thymio Device Manager is ready.")
+def ensure_tdm_running(timeout=2):
+    try:
+        with socket.create_connection(("127.0.0.1", 8596), timeout):
             return
-
-        time.sleep(0.5)
-
-    raise RuntimeError("TDM did not become ready in time")
+    except OSError:
+        raise RuntimeError(
+            "Thymio Device Manager is not running.\n\n"
+            "Try:\n"
+            "  sudo systemctl status thymio-device-manager.service\n"
+            "  sudo systemctl restart thymio-device-manager.service"
+        )

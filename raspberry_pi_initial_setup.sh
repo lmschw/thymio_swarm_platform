@@ -13,7 +13,7 @@ sudo apt install -y \
     python3-venv \
     flatpak \
     wget \
-    curl
+    curl 
 #
 # Time
 #
@@ -25,7 +25,7 @@ sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -
 #
 
 sudo flatpak remote-add --if-not-exists flathub \
-https://flathub.org/repo/flathub.flatpakrepo
+    https://flathub.org/repo/flathub.flatpakrepo
 
 sudo flatpak install -y flathub org.mobsya.ThymioSuite
 
@@ -43,6 +43,67 @@ sudo udevadm trigger
 
 sudo usermod -aG dialout,plugdev "$USER"
 
+#
+# Thymio Device Manager launcher
+#
+
+sudo tee /usr/local/bin/start-thymio-device-manager.sh >/dev/null <<'EOF'
+#!/usr/bin/env bash
+
+export DISPLAY=:0
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+
+exec /usr/bin/flatpak run \
+    --command=thymio-device-manager \
+    org.mobsya.ThymioSuite
+EOF
+
+sudo chmod +x /usr/local/bin/start-thymio-device-manager.sh
+
+#
+# systemd service
+#
+
+USER_NAME="$USER"
+USER_ID="$(id -u)"
+
+sudo tee /etc/systemd/system/thymio-device-manager.service >/dev/null <<EOF
+[Unit]
+Description=Thymio Device Manager
+After=graphical.target network-online.target
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=${USER_NAME}
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/${USER_ID}
+
+ExecStart=/usr/local/bin/start-thymio-device-manager.sh
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable thymio-device-manager.service
+
 echo
-echo "Reboot required."
+echo "========================================="
+echo "Setup complete."
 echo
+echo "Please reboot the Raspberry Pi:"
+echo "    sudo reboot"
+echo
+echo "After reboot you can verify that the"
+echo "Thymio Device Manager is running with:"
+echo
+echo "    systemctl status thymio-device-manager.service"
+echo
+echo "and"
+echo
+echo "    python3 -m tdmclient list"
+echo "========================================="
