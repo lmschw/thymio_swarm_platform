@@ -22,6 +22,7 @@ async def handle(reader, writer):
         return
 
     msg_type = msg.get("type")
+    print("[RAW MSG]", msg)
 
     # -------------------------
     # REGISTER ROBOT
