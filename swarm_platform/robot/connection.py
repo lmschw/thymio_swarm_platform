@@ -69,10 +69,16 @@ class ThymioConnection:
         # ONLY NOW do we lock
         await self.node.lock()
 
-        await self.node.watch(
-            variables=True,
-            events=True,
-        )
+        await self.node.watch(variables=True, events=True)
+
+        # IMPORTANT: give TDM time to publish first sensor frame
+        for _ in range(50):
+            self.client.process_waiting_messages()
+
+            if self.node.var.get("prox.horizontal") is not None:
+                break
+
+            await asyncio.sleep(0.05)
 
         self.running = True
         self.poll_task = asyncio.create_task(self._poll())
