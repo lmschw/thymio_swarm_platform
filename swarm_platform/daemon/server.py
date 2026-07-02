@@ -89,7 +89,14 @@ class SwarmDaemon:
         self.experiment = experiment_cls(config=config, robot=self.robot)
 
         self.running_experiment = True
-        asyncio.create_task(self._run_experiment())
+
+        self.experiment_task = asyncio.create_task(self._run_experiment())
+
+        self.experiment_task.add_done_callback(
+            lambda t: print(f"[EXPERIMENT TASK DONE] {t.exception()}")
+        )
+
+        print(f"Task created: {self.experiment_task}")
 
         return {"type": "started"}
 
