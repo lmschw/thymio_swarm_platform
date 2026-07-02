@@ -65,6 +65,7 @@ class SwarmDaemon:
             self.running_experiment = False
 
     async def _start_experiment(self, msg):
+        print(f"Loading experiment msg: {msg}")
         print(f"Loading experiment: {name}")
         print(f"Experiment class: {experiment_cls}")
         print("Starting experiment now...")
