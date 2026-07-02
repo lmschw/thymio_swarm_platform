@@ -43,6 +43,7 @@ class SwarmDaemon:
             return {"type": "stopped"}
 
         if t == "start_experiment":
+            print("[RAW MSG]", msg)
             return await self._start_experiment(msg)
         
         elif t == "update_code":
