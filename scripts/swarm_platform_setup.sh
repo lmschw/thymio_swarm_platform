@@ -4,43 +4,32 @@ set -euo pipefail
 
 echo "===== Swarm Platform Setup ====="
 
+PROJECT_DIR="$(pwd)"
+CURRENT_USER="$USER"
+
 #
 # Create virtual environment
 #
 
 python3 -m venv .venv
-
 source .venv/bin/activate
 
 pip install --upgrade pip
-
-#
-# Install package
-#
-
 pip install -e .
 
-
-# 
-# Create configuration file
+#
+# Create environment config (IMPORTANT)
 #
 
 sudo tee /etc/swarm-platform.conf >/dev/null <<EOF
 # Swarm Platform configuration
-
 SWARM_COORDINATOR=10.15.2.96
 SWARM_COORDINATOR_PORT=9100
-
-# Reserved for future use
-SWARM_ROBOT_PORT=9000
 EOF
 
 #
 # Create swarm daemon service
 #
-
-PROJECT_DIR="$(pwd)"
-CURRENT_USER="$USER"
 
 sudo tee /etc/systemd/system/swarm-daemon.service >/dev/null <<EOF
 [Unit]
@@ -53,8 +42,12 @@ Requires=thymio-device-manager.service
 Type=simple
 User=${CURRENT_USER}
 WorkingDirectory=${PROJECT_DIR}
+
+EnvironmentFile=/etc/swarm-platform.conf
 Environment=PATH=${PROJECT_DIR}/.venv/bin
+
 ExecStart=${PROJECT_DIR}/.venv/bin/python -m swarm_platform.daemon.main
+
 Restart=always
 RestartSec=5
 
@@ -62,16 +55,17 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
+#
+# Reload systemd and enable service
+#
+
 sudo systemctl daemon-reload
-
 sudo systemctl enable swarm-daemon.service
-
-sudo systemctl restart thymio-device-manager.service
-
-sudo systemctl start swarm-daemon.service
+sudo systemctl restart swarm-daemon.service
 
 echo
 echo "================================="
-echo "Swarm Platform installed."
-echo "Run ./verify_installation.sh"
+echo "Swarm Platform installed"
+echo "Daemon service enabled"
+echo "Config: /etc/swarm-platform.conf"
 echo "================================="

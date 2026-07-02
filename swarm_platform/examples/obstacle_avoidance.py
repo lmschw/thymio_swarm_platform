@@ -1,41 +1,48 @@
 import asyncio
 
-from swarm_platform.protocol.command import RobotCommand
-from swarm_platform.controllers.controller import Controller 
-from swarm_platform import Experiment, RobotConfig
-from swarm_platform.utils.logging import CSVLogger
+from swarm_platform.controllers.experiments import Experiment
 
 
-class ObstacleAvoidance(Controller):
+class ObstacleAvoidance(Experiment):
 
-    def __init__(self, threshold=2500, speed=200):
-        self.threshold = threshold
-        self.speed = speed
+    FORWARD_SPEED = 200
+    TURN_SPEED = 150
+    THRESHOLD = 1800
 
-    async def step(self, state):
-        if max(state.proximity) > self.threshold:
-            return RobotCommand(
-                left_motor=-self.speed,
-                right_motor=self.speed,
-                top_led=(32, 0, 0),
-            )
+    async def run(self):
 
-        return RobotCommand(
-            left_motor=self.speed,
-            right_motor=self.speed,
-            top_led=(0, 32, 0),
-        )
+        while True:
 
-async def main():
+            prox = await self.robot.proximity_horizontal()
 
-    experiment = Experiment(
-        controller=ObstacleAvoidance(),
-        logger=CSVLogger("results/run_001.csv"),
-        config=RobotConfig(control_frequency=20),
-    )
+            left = prox[0] + prox[1]
+            center = prox[2]
+            right = prox[3] + prox[4]
 
-    await experiment.run(duration=60)
+            if center > self.THRESHOLD:
 
+                if left < right:
+                    # Turn left
+                    await self.robot.top_led(255, 255, 0)   # yellow
+                    await self.robot.drive(
+                        -self.TURN_SPEED,
+                        self.TURN_SPEED,
+                    )
 
-if __name__ == "__main__":
-    asyncio.run(main())
+                else:
+                    # Turn right
+                    await self.robot.top_led(255, 255, 0)   # yellow
+                    await self.robot.drive(
+                        self.TURN_SPEED,
+                        -self.TURN_SPEED,
+                    )
+
+            else:
+                # Drive forward
+                await self.robot.top_led(0, 255, 0)         # green
+                await self.robot.drive(
+                    self.FORWARD_SPEED,
+                    self.FORWARD_SPEED,
+                )
+
+            await asyncio.sleep(0.05)

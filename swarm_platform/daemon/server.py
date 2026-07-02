@@ -11,10 +11,17 @@ from swarm_platform.controllers.experiments import EXPERIMENTS
 
 class SwarmDaemon:
 
-    COORDINATOR_IP = os.environ["SWARM_COORDINATOR"]
-    COORDINATOR_PORT = int(os.environ["SWARM_COORDINATOR_PORT"])
-
     def __init__(self):
+        self.coordinator_ip = os.getenv("SWARM_COORDINATOR")
+        self.coordinator_port = int(
+            os.getenv("SWARM_COORDINATOR_PORT", "9100")
+        )
+
+        if self.coordinator_ip is None:
+            raise RuntimeError(
+                "SWARM_COORDINATOR not configured."
+            )
+
         self.robot = Robot()
         self.experiment = None
         self.running_experiment = False
@@ -41,18 +48,28 @@ class SwarmDaemon:
 
         return {"type": "error", "error": "unknown_command"}
     
+    async def _run_experiment(self):
+        try:
+            await self.experiment.run()
+        finally:
+            self.running_experiment = False
+    
     async def _start_experiment(self, msg):
+        if self.running_experiment:
+            return {
+                "type": "error",
+                "error": "Experiment already running"
+            }
+
         name = msg["name"]
         config = msg.get("config", {})
-
-        self.running_experiment = True
 
         experiment_cls = self._load_experiment(name)
         self.experiment = experiment_cls(config=config, robot=self.robot)
 
-        await self.experiment.run()
+        self.running_experiment = True
 
-        self.running_experiment = False
+        asyncio.create_task(self._run_experiment())
 
         return {"type": "started"}
     
@@ -113,8 +130,8 @@ class SwarmDaemon:
         }
 
         _, writer = await asyncio.open_connection(
-            self.COORDINATOR_IP,
-            self.COORDINATOR_PORT
+            self.coordinator_ip,
+            self.coordinator_port
         )
 
         writer.write((json.dumps(msg) + "\n").encode())
@@ -145,9 +162,9 @@ class SwarmDaemon:
                 "robot_id": socket.gethostname()
             }
 
-            reader, writer = await asyncio.open_connection(
-                self.COORDINATOR_IP,
-                self.COORDINATOR_PORT
+            _, writer = await asyncio.open_connection(
+                self.coordinator_ip,
+                self.coordinator_port
             )
 
             writer.write((json.dumps(msg) + "\n").encode())
