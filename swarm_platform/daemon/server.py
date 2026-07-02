@@ -56,6 +56,7 @@ class SwarmDaemon:
     # ---------------------------
 
     async def _run_experiment(self):
+        print("Experiment thread started")
         try:
             await self.experiment.run()
         except Exception as e:
@@ -64,6 +65,9 @@ class SwarmDaemon:
             self.running_experiment = False
 
     async def _start_experiment(self, msg):
+        print(f"Loading experiment: {name}")
+        print(f"Experiment class: {experiment_cls}")
+        print("Starting experiment now...")
         if self.running_experiment:
             return {"type": "error", "error": "Experiment already running"}
 

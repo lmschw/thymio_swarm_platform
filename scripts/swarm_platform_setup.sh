@@ -39,19 +39,19 @@ After=network.target
 
 [Service]
 Type=simple
-User=${CURRENT_USER}
-WorkingDirectory=${PROJECT_DIR}
+User=thymio
+WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 
 EnvironmentFile=/etc/swarm-platform.conf
-Environment=PATH=${PROJECT_DIR}/.venv/bin
+Environment=PYTHONUNBUFFERED=1
 
-ExecStart=${PROJECT_DIR}/.venv/bin/python -m swarm_platform.daemon.main
+ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
 
 Restart=always
-RestartSec=5
+RestartSec=3
 
-StandardOutput=append:${PROJECT_DIR}/swarm-daemon.log
-StandardError=append:${PROJECT_DIR}/swarm-daemon.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

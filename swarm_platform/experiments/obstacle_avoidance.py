@@ -15,7 +15,7 @@ class ObstacleAvoidance(Experiment):
         self.paused = False
 
     async def run(self):
-
+        print("Obstacle avoidance RUNNING")
         while self.running:
 
             if self.paused:
