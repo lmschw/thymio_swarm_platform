@@ -84,17 +84,23 @@ class SwarmDaemon:
         return EXPERIMENTS[name]
     
     async def run(self, host="0.0.0.0", port=9000):
-        await self.robot.connect()
+        while True:
+            try:
+                await self.robot.connect()
+                break
+            except Exception as e:
+                print(f"Waiting for robot: {e}")
+                await asyncio.sleep(2)
+
         asyncio.create_task(self.coordinator_loop())
 
         print("Starting TCP server...")
+
         server = await asyncio.start_server(
             self._handle_connection,
             host,
             port,
         )
-
-        print("TCP server started")
 
         async with server:
             await server.serve_forever()

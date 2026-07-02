@@ -20,12 +20,11 @@ pip install --upgrade pip
 pip install -e .
 
 #
-# Create environment config (IMPORTANT)
+# Create environment config
 #
 
 sudo tee /etc/swarm-platform.conf >/dev/null <<EOF
-# Swarm Platform configuration
-SWARM_COORDINATOR=10.15.2.96
+SWARM_COORDINATOR=10.15.2.63
 SWARM_COORDINATOR_PORT=9100
 EOF
 
@@ -36,20 +35,14 @@ EOF
 sudo tee /etc/systemd/system/swarm-daemon.service >/dev/null <<EOF
 [Unit]
 Description=Swarm Platform Daemon
-After=network-online.target thymio-device-manager.service
-Wants=network-online.target
-Requires=thymio-device-manager.service
+After=network.target
 
 [Service]
 Type=simple
-User=thymio
-WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
-
 User=${CURRENT_USER}
 WorkingDirectory=${PROJECT_DIR}
 
-Environment=SWARM_COORDINATOR=10.15.2.63
-Environment=SWARM_COORDINATOR_PORT=9100
+EnvironmentFile=/etc/swarm-platform.conf
 Environment=PATH=${PROJECT_DIR}/.venv/bin
 
 ExecStart=${PROJECT_DIR}/.venv/bin/python -m swarm_platform.daemon.main
@@ -57,21 +50,30 @@ ExecStart=${PROJECT_DIR}/.venv/bin/python -m swarm_platform.daemon.main
 Restart=always
 RestartSec=5
 
+StandardOutput=append:${PROJECT_DIR}/swarm-daemon.log
+StandardError=append:${PROJECT_DIR}/swarm-daemon.log
+
 [Install]
 WantedBy=multi-user.target
 EOF
 
 #
-# Reload systemd and enable service
+# Reload systemd
 #
 
 sudo systemctl daemon-reload
+
+#
+# Enable and start daemon
+#
+
 sudo systemctl enable swarm-daemon.service
-sudo systemctl start swarm-daemon.service
+sudo systemctl restart swarm-daemon.service
 
 echo
 echo "================================="
 echo "Swarm Platform installed"
 echo "Daemon service enabled"
-echo "Config: /etc/swarm-platform.conf"
+echo "Coordinator: 10.15.2.63:9100"
+echo "Log file: ${PROJECT_DIR}/swarm-daemon.log"
 echo "================================="
