@@ -19,11 +19,6 @@ class SwarmDaemon:
         self.experiment = None
         self.running_experiment = False
 
-    async def init(self):
-        await self.register()
-        asyncio.create_task(self.heartbeat_loop())
-        await self.robot.connect()
-
     async def handle(self, msg: dict):
         t = msg.get("type")
 
@@ -128,29 +123,43 @@ class SwarmDaemon:
         writer.close()
         await writer.wait_closed()
 
+
     async def heartbeat_loop(self):
         while True:
             try:
-                msg = {
-                    "type": "heartbeat",
-                    "robot_id": socket.gethostname()
-                }
+                await self.register()
 
-                reader, writer = await asyncio.open_connection(
-                    self.COORDINATOR_IP,
-                    self.COORDINATOR_PORT
-                )
+                while True:
+                    await self.send_heartbeat()
+                    await asyncio.sleep(5)
 
-                writer.write((json.dumps(msg) + "\n").encode())
-                await writer.drain()
-
-                writer.close()
-                await writer.wait_closed()
-
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Coordinator unavailable: {e}")
 
             await asyncio.sleep(5)
+
+    async def send_heartbeat(self):
+        try:
+            msg = {
+                "type": "heartbeat",
+                "robot_id": socket.gethostname()
+            }
+
+            reader, writer = await asyncio.open_connection(
+                self.COORDINATOR_IP,
+                self.COORDINATOR_PORT
+            )
+
+            writer.write((json.dumps(msg) + "\n").encode())
+            await writer.drain()
+
+            writer.close()
+            await writer.wait_closed()
+
+        except Exception:
+            pass
+
+        await asyncio.sleep(5)
 
     async def coordinator_loop(self):
         while True:
