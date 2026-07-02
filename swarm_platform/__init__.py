@@ -1,3 +1,3 @@
 from .robot.robot import Robot
-from .controllers.experiment import Experiment
+from .experiments.base import Experiment
 from .utils.config import RobotConfig

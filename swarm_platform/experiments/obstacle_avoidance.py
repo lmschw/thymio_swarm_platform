@@ -1,6 +1,6 @@
 import asyncio
 
-from swarm_platform.controllers.experiment import Experiment
+from swarm_platform.experiments.base import Experiment
 
 
 class ObstacleAvoidance(Experiment):
@@ -9,9 +9,19 @@ class ObstacleAvoidance(Experiment):
     TURN_SPEED = 150
     THRESHOLD = 1800
 
+    def __init__(self, robot, config=None):
+        super().__init__(robot=robot, config=config)
+        self.running = True
+        self.paused = False
+
     async def run(self):
 
-        while True:
+        while self.running:
+
+            if self.paused:
+                await self.robot.stop()
+                await asyncio.sleep(0.1)
+                continue
 
             prox = await self.robot.proximity_horizontal()
 
@@ -22,27 +32,42 @@ class ObstacleAvoidance(Experiment):
             if center > self.THRESHOLD:
 
                 if left < right:
-                    # Turn left
-                    await self.robot.top_led(255, 255, 0)   # yellow
+
+                    await self.robot.top_led(255, 255, 0)
+
                     await self.robot.drive(
                         -self.TURN_SPEED,
                         self.TURN_SPEED,
                     )
 
                 else:
-                    # Turn right
-                    await self.robot.top_led(255, 255, 0)   # yellow
+
+                    await self.robot.top_led(255, 255, 0)
+
                     await self.robot.drive(
                         self.TURN_SPEED,
                         -self.TURN_SPEED,
                     )
 
             else:
-                # Drive forward
-                await self.robot.top_led(0, 255, 0)         # green
+
+                await self.robot.top_led(0, 255, 0)
+
                 await self.robot.drive(
                     self.FORWARD_SPEED,
                     self.FORWARD_SPEED,
                 )
 
             await asyncio.sleep(0.05)
+
+        await self.robot.stop()
+        await self.robot.top_led(0, 0, 0)
+
+    async def pause(self):
+        self.paused = True
+
+    async def resume(self):
+        self.paused = False
+
+    async def stop(self):
+        self.running = False
