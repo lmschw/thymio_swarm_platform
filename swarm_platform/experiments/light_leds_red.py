@@ -12,20 +12,8 @@ class LightLEDsRed:
 
     async def run(self):
         print(">>> LIGHT LEDS RED STARTED <<<", flush=True)
-
-        while self.running:
-
-            if self.paused:
-                await self.robot.stop()
-                await asyncio.sleep(0.1)
-                continue
-
-            await self.robot.top_led(32, 0, 0)
-
-            await asyncio.sleep(0.05)
-
+        await self.robot.top_led(32, 0, 0)
         await self.robot.stop()
-        await self.robot.top_led(0, 0, 0)
 
     async def pause(self):
         self.paused = True
