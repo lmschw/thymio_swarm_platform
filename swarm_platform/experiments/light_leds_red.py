@@ -11,7 +11,7 @@ class LightLEDsRed:
         self.paused = False
 
     async def run(self):
-        print(">>> OBSTACLE AVOIDANCE STARTED <<<", flush=True)
+        print(">>> LIGHT LEDS RED STARTED <<<", flush=True)
 
         while self.running:
 
