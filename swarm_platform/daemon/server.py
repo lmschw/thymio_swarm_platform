@@ -74,7 +74,6 @@ class SwarmDaemon:
         config = msg.get("config", {})
         
         print(f"Loading experiment: {name}")
-        print(f"Experiment class: {experiment_cls}")
         print("Starting experiment now...")
 
         if name not in EXPERIMENTS:
