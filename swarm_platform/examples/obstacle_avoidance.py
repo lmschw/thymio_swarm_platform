@@ -1,6 +1,6 @@
 import asyncio
 
-from swarm_platform.controllers.experiments import Experiment
+from swarm_platform.controllers.experiment import Experiment
 
 
 class ObstacleAvoidance(Experiment):
