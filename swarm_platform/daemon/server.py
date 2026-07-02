@@ -66,14 +66,16 @@ class SwarmDaemon:
 
     async def _start_experiment(self, msg):
         print(f"Loading experiment msg: {msg}")
+
+        if self.running_experiment:
+            return {"type": "error", "error": "Experiment already running"}
+        
+        name = msg["name"]
+        config = msg.get("config", {})
+        
         print(f"Loading experiment: {name}")
         print(f"Experiment class: {experiment_cls}")
         print("Starting experiment now...")
-        if self.running_experiment:
-            return {"type": "error", "error": "Experiment already running"}
-
-        name = msg["name"]
-        config = msg.get("config", {})
 
         if name not in EXPERIMENTS:
             return {"type": "error", "error": f"Unknown experiment: {name}"}
