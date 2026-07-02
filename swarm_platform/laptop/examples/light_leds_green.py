@@ -17,7 +17,7 @@ async def main():
     await client.broadcast(
         {
             "type": "start_experiment",
-            "name": "stop",
+            "name": "light_leds_green",
             "config": {},
         }
     )
