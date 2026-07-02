@@ -1,21 +1,21 @@
 import asyncio
 
-from swarm_platform.experiments.base import Experiment
 
-
-class ObstacleAvoidance(Experiment):
-
+class ObstacleAvoidance:
     FORWARD_SPEED = 200
     TURN_SPEED = 150
     THRESHOLD = 1800
 
     def __init__(self, robot, config=None):
-        super().__init__(robot=robot, config=config)
+        self.robot = robot
+        self.config = config or {}
+
         self.running = True
         self.paused = False
 
     async def run(self):
-        print("Obstacle avoidance RUNNING")
+        print(">>> OBSTACLE AVOIDANCE STARTED <<<", flush=True)
+
         while self.running:
 
             if self.paused:
@@ -31,32 +31,16 @@ class ObstacleAvoidance(Experiment):
 
             if center > self.THRESHOLD:
 
+                await self.robot.top_led(255, 255, 0)
+
                 if left < right:
-
-                    await self.robot.top_led(255, 255, 0)
-
-                    await self.robot.drive(
-                        -self.TURN_SPEED,
-                        self.TURN_SPEED,
-                    )
-
+                    await self.robot.drive(-self.TURN_SPEED, self.TURN_SPEED)
                 else:
-
-                    await self.robot.top_led(255, 255, 0)
-
-                    await self.robot.drive(
-                        self.TURN_SPEED,
-                        -self.TURN_SPEED,
-                    )
+                    await self.robot.drive(self.TURN_SPEED, -self.TURN_SPEED)
 
             else:
-
                 await self.robot.top_led(0, 255, 0)
-
-                await self.robot.drive(
-                    self.FORWARD_SPEED,
-                    self.FORWARD_SPEED,
-                )
+                await self.robot.drive(self.FORWARD_SPEED, self.FORWARD_SPEED)
 
             await asyncio.sleep(0.05)
 

@@ -86,23 +86,21 @@ class SwarmDaemon:
             return {"type": "error", "error": f"Unknown experiment: {name}"}
 
         experiment_cls = EXPERIMENTS[name]
-        print(f"Experiment class: {experiment_cls}")
-        self.experiment = experiment_cls(config=config, robot=self.robot)
 
-        print(f"Experiment instance: {self.experiment}")
+        self.experiment = experiment_cls(
+            robot=self.robot,
+            config=config
+        )
 
         self.running_experiment = True
 
-        print("BEFORE create_task", flush=True)
-        self.experiment_task = asyncio.create_task(self._run_experiment())
-        print("AFTER create_task", flush=True)
-        print(f"Experiment task: {self.experiment_task}")
+        self.experiment_task = asyncio.create_task(self.experiment.run())
+
+        print(f"[DAEMON] experiment task started: {self.experiment_task}")
 
         self.experiment_task.add_done_callback(
-            lambda t: print(f"[EXPERIMENT TASK DONE] {t.exception()}")
+            lambda t: print(f"[EXPERIMENT DONE] {t.exception()}")
         )
-
-        print(f"Task created: {self.experiment_task}")
 
         return {"type": "started"}
 
