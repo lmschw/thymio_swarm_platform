@@ -35,7 +35,7 @@ EOF
 
 sudo tee /etc/systemd/system/swarm-daemon.service >/dev/null <<EOF
 [Unit]
-Description=Swarm Platform Robot Daemon
+Description=Swarm Platform Daemon
 After=network-online.target thymio-device-manager.service
 Wants=network-online.target
 Requires=thymio-device-manager.service
@@ -47,7 +47,6 @@ WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 
 Environment=SWARM_COORDINATOR=10.15.2.96
 Environment=SWARM_COORDINATOR_PORT=9100
-
 Environment=PATH=/home/thymio/swarm/thymio_swarm_platform/.venv/bin
 
 ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
@@ -66,7 +65,6 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable swarm-daemon.service
 sudo systemctl restart swarm-daemon.service
-sudo systemctl stop swarm-daemon.service
 
 echo
 echo "================================="
