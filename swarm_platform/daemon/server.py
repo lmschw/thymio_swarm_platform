@@ -80,6 +80,7 @@ class SwarmDaemon:
             return {"type": "error", "error": f"Unknown experiment: {name}"}
 
         experiment_cls = EXPERIMENTS[name]
+        print(f"Experiment class: {experiment_cls}")
         self.experiment = experiment_cls(config=config, robot=self.robot)
 
         self.running_experiment = True
