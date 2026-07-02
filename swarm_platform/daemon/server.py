@@ -56,11 +56,16 @@ class SwarmDaemon:
     # ---------------------------
 
     async def _run_experiment(self):
-        print("Experiment thread started")
         try:
+            print(">>> EXPERIMENT TASK STARTED <<<")
+
             await self.experiment.run()
+
+            print(">>> EXPERIMENT FINISHED <<<")
+
         except Exception as e:
-            print(f"[EXPERIMENT ERROR] {e}")
+            print(f">>> EXPERIMENT CRASHED: {repr(e)}")
+
         finally:
             self.running_experiment = False
 
