@@ -45,11 +45,14 @@ Type=simple
 User=thymio
 WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 
-Environment=SWARM_COORDINATOR=10.15.2.96
-Environment=SWARM_COORDINATOR_PORT=9100
-Environment=PATH=/home/thymio/swarm/thymio_swarm_platform/.venv/bin
+User=${CURRENT_USER}
+WorkingDirectory=${PROJECT_DIR}
 
-ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
+Environment=SWARM_COORDINATOR=10.15.2.63
+Environment=SWARM_COORDINATOR_PORT=9100
+Environment=PATH=${PROJECT_DIR}/.venv/bin
+
+ExecStart=${PROJECT_DIR}/.venv/bin/python -m swarm_platform.daemon.main
 
 Restart=always
 RestartSec=5
@@ -64,7 +67,7 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable swarm-daemon.service
-sudo systemctl restart swarm-daemon.service
+sudo systemctl start swarm-daemon.service
 
 echo
 echo "================================="
