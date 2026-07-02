@@ -66,6 +66,7 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable swarm-daemon.service
 sudo systemctl restart swarm-daemon.service
+sudo systemctl stop swarm-daemon.service
 
 echo
 echo "================================="
