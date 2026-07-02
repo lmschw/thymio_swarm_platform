@@ -85,6 +85,12 @@ class SwarmDaemon:
         return EXPERIMENTS[name]
     
     async def run(self, host="0.0.0.0", port=9000):
+        print(">>> DAEMON STARTED <<<")
+
+        await asyncio.sleep(10)
+
+        print(">>> STILL ALIVE <<<")
+        
         while True:
             try:
                 await self.robot.connect()
