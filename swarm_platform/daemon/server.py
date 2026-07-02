@@ -1,14 +1,13 @@
 import asyncio
 import socket
 import json
-import asyncio
 import os
 import subprocess
 
 from swarm_platform.protocol.codec import encode, decode
-from swarm_platform.protocol.messages import Ping, Status, Stop, StartExperiment
 from swarm_platform.robot.robot import Robot
 from swarm_platform.controllers.experiments import EXPERIMENTS
+
 
 class SwarmDaemon:
 
@@ -16,14 +15,13 @@ class SwarmDaemon:
         self.coordinator_ip = os.getenv("SWARM_COORDINATOR", "10.15.2.63")
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 
-        if self.coordinator_ip is None:
-            raise RuntimeError(
-                "SWARM_COORDINATOR not configured."
-            )
-
         self.robot = Robot()
         self.experiment = None
         self.running_experiment = False
+
+    # ---------------------------
+    # MESSAGE HANDLING
+    # ---------------------------
 
     async def handle(self, msg: dict):
         t = msg.get("type")
@@ -45,77 +43,126 @@ class SwarmDaemon:
         if t == "start_experiment":
             print("[RAW MSG]", msg)
             return await self._start_experiment(msg)
-        
-        elif t == "update_code":
+
+        if t == "update_code":
             subprocess.run(["git", "pull"])
-            subprocess.run(["sudo", "systemctl", "restart", "swarm-daemon"])
+            subprocess.run(["systemctl", "restart", "swarm-daemon"])
             return {"type": "updated"}
 
         return {"type": "error", "error": "unknown_command"}
-    
+
+    # ---------------------------
+    # EXPERIMENT CONTROL
+    # ---------------------------
+
     async def _run_experiment(self):
         try:
             await self.experiment.run()
+        except Exception as e:
+            print(f"[EXPERIMENT ERROR] {e}")
         finally:
             self.running_experiment = False
-    
+
     async def _start_experiment(self, msg):
         if self.running_experiment:
-            return {
-                "type": "error",
-                "error": "Experiment already running"
-            }
+            return {"type": "error", "error": "Experiment already running"}
 
         name = msg["name"]
         config = msg.get("config", {})
 
-        experiment_cls = self._load_experiment(name)
+        if name not in EXPERIMENTS:
+            return {"type": "error", "error": f"Unknown experiment: {name}"}
+
+        experiment_cls = EXPERIMENTS[name]
         self.experiment = experiment_cls(config=config, robot=self.robot)
 
         self.running_experiment = True
-
         asyncio.create_task(self._run_experiment())
 
         return {"type": "started"}
-    
-    def _load_experiment(self, name: str):
-        if name not in EXPERIMENTS:
-            raise ValueError(f"Unknown experiment: {name}")
 
-        return EXPERIMENTS[name]
-    
-    async def run(self, host="0.0.0.0", port=9000):
-        print(">>> DAEMON STARTED <<<")
+    # ---------------------------
+    # NETWORK LOOP TASKS
+    # ---------------------------
 
-        await asyncio.sleep(10)
+    async def register_loop(self):
+        while True:
+            try:
+                await self.register()
+            except Exception as e:
+                print(f"[REGISTER ERROR] {e}")
 
-        print(">>> STILL ALIVE <<<")
-        
+            await asyncio.sleep(30)
+
+    async def heartbeat_loop(self):
+        while True:
+            try:
+                await self.send_heartbeat()
+            except Exception as e:
+                print(f"[HEARTBEAT ERROR] {e}")
+
+            await asyncio.sleep(5)
+
+    # ---------------------------
+    # ROBOT / COORDINATOR
+    # ---------------------------
+
+    async def connect_robot(self):
         while True:
             try:
                 await self.robot.connect()
+                print("[ROBOT] connected")
                 break
             except Exception as e:
-                print(f"Waiting for robot: {e}")
+                print(f"[ROBOT] waiting: {e}")
                 await asyncio.sleep(2)
 
-        asyncio.create_task(self.coordinator_loop())
+    def get_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
 
-        print("Starting TCP server...")
+    async def register(self):
+        msg = {
+            "type": "register",
+            "robot_id": socket.gethostname(),
+            "ip": self.get_ip(),
+            "port": 9000,
+        }
 
-        server = await asyncio.start_server(
-            self._handle_connection,
-            host,
-            port,
+        reader, writer = await asyncio.open_connection(
+            self.coordinator_ip,
+            self.coordinator_port
         )
 
-        async with server:
-            await server.serve_forever()
+        writer.write((json.dumps(msg) + "\n").encode())
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
+    async def send_heartbeat(self):
+        msg = {
+            "type": "heartbeat",
+            "robot_id": socket.gethostname()
+        }
+
+        reader, writer = await asyncio.open_connection(
+            self.coordinator_ip,
+            self.coordinator_port
+        )
+
+        writer.write((json.dumps(msg) + "\n").encode())
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
+    # ---------------------------
+    # TCP SERVER
+    # ---------------------------
 
     async def _handle_connection(self, reader, writer):
         while True:
             data = await reader.readline()
-
             if not data:
                 break
 
@@ -132,75 +179,25 @@ class SwarmDaemon:
         writer.close()
         await writer.wait_closed()
 
+    # ---------------------------
+    # MAIN RUN LOOP
+    # ---------------------------
 
-    def get_ip(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        return s.getsockname()[0]
+    async def run(self, host="0.0.0.0", port=9000):
+        print(">>> DAEMON STARTED <<<")
 
-    async def register(self):
-        msg = {
-            "type": "register",
-            "robot_id": socket.gethostname(),
-            "ip": self.get_ip(),
-            "port": 9000
-        }
+        await self.connect_robot()
 
-        _, writer = await asyncio.open_connection(
-            self.coordinator_ip,
-            self.coordinator_port
+        server = await asyncio.start_server(
+            self._handle_connection,
+            host,
+            port,
         )
 
-        writer.write((json.dumps(msg) + "\n").encode())
-        await writer.drain()
+        print("TCP server started")
 
-        writer.close()
-        await writer.wait_closed()
+        asyncio.create_task(self.register_loop())
+        asyncio.create_task(self.heartbeat_loop())
 
-
-    async def heartbeat_loop(self):
-        while True:
-            try:
-                await self.register()
-
-                while True:
-                    await self.send_heartbeat()
-                    await asyncio.sleep(5)
-
-            except Exception as e:
-                print(f"Coordinator unavailable: {e}")
-
-            await asyncio.sleep(5)
-
-    async def send_heartbeat(self):
-        try:
-            msg = {
-                "type": "heartbeat",
-                "robot_id": socket.gethostname()
-            }
-
-            _, writer = await asyncio.open_connection(
-                self.coordinator_ip,
-                self.coordinator_port
-            )
-
-            writer.write((json.dumps(msg) + "\n").encode())
-            await writer.drain()
-
-            writer.close()
-            await writer.wait_closed()
-
-        except Exception:
-            pass
-
-        await asyncio.sleep(5)
-
-    async def coordinator_loop(self):
-        while True:
-            try:
-                await self.register()
-                await self.heartbeat_loop()
-            except Exception as e:
-                print(f"Coordinator unavailable: {e}")
-
-            await asyncio.sleep(5)
+        async with server:
+            await asyncio.Event().wait()
