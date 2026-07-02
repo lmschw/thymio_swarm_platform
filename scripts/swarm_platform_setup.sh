@@ -40,13 +40,15 @@ Requires=thymio-device-manager.service
 
 [Service]
 Type=simple
-User=${CURRENT_USER}
-WorkingDirectory=${PROJECT_DIR}
+User=thymio
+WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 
-EnvironmentFile=/etc/swarm-platform.conf
-Environment=PATH=${PROJECT_DIR}/.venv/bin
+Environment=SWARM_COORDINATOR=10.15.2.96
+Environment=SWARM_COORDINATOR_PORT=9100
 
-ExecStart=${PROJECT_DIR}/.venv/bin/python -m swarm_platform.daemon.main
+Environment=PATH=/home/thymio/swarm/thymio_swarm_platform/.venv/bin
+
+ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
 
 Restart=always
 RestartSec=5

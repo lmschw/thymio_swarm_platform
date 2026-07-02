@@ -12,10 +12,8 @@ from swarm_platform.controllers.experiments import EXPERIMENTS
 class SwarmDaemon:
 
     def __init__(self):
-        self.coordinator_ip = os.getenv("SWARM_COORDINATOR")
-        self.coordinator_port = int(
-            os.getenv("SWARM_COORDINATOR_PORT", "9100")
-        )
+        self.coordinator_ip = os.getenv("SWARM_COORDINATOR", "10.15.2.96")
+        self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 
         if self.coordinator_ip is None:
             raise RuntimeError(
