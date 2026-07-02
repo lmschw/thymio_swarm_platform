@@ -57,8 +57,9 @@ class SwarmDaemon:
 
     async def _run_experiment(self):
         try:
-            print(">>> EXPERIMENT TASK STARTED <<<")
-
+            print(">>> EXPERIMENT TASK STARTED <<<", flush=True)
+            await asyncio.sleep(2)
+            print(">>> EXPERIMENT STILL RUNNING <<<", flush=True)
             await self.experiment.run()
 
             print(">>> EXPERIMENT FINISHED <<<")
@@ -92,8 +93,9 @@ class SwarmDaemon:
 
         self.running_experiment = True
 
+        print("BEFORE create_task", flush=True)
         self.experiment_task = asyncio.create_task(self._run_experiment())
-
+        print("AFTER create_task", flush=True)
         print(f"Experiment task: {self.experiment_task}")
 
         self.experiment_task.add_done_callback(
