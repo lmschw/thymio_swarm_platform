@@ -35,9 +35,27 @@ class SwarmDaemon:
                 "running": self.running_experiment,
             }
 
+        if t == "pause":
+            if self.experiment:
+                await self.experiment.pause()
+            return {"type": "paused"}
+
+        if t == "resume":
+            if self.experiment:
+                await self.experiment.resume()
+            return {"type": "resumed"}
+
         if t == "stop":
             self.running_experiment = False
+
+            if self.experiment:
+                await self.experiment.stop()
+
+            if self.experiment_task:
+                self.experiment_task.cancel()
+
             await self.robot.stop()
+
             return {"type": "stopped"}
 
         if t == "start_experiment":
