@@ -3,6 +3,7 @@ import socket
 import json
 import asyncio
 import os
+import subprocess
 
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.protocol.messages import Ping, Status, Stop, StartExperiment
@@ -43,6 +44,11 @@ class SwarmDaemon:
 
         if t == "start_experiment":
             return await self._start_experiment(msg)
+        
+        elif t == "update_code":
+            subprocess.run(["git", "pull"])
+            subprocess.run(["sudo", "systemctl", "restart", "swarm-daemon"])
+            return {"type": "updated"}
 
         return {"type": "error", "error": "unknown_command"}
     
