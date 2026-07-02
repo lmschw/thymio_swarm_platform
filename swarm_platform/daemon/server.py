@@ -63,9 +63,17 @@ class SwarmDaemon:
             return await self._start_experiment(msg)
 
         if t == "update_code":
-            subprocess.run(["git", "pull"])
-            subprocess.run(["systemctl", "restart", "swarm-daemon"])
-            return {"type": "updated"}
+            subprocess.run(["git", "pull"], check=True)
+
+            # tell systemd to restart safely
+            return {"type": "updated_restart_required"}
+        
+        if t == "updated_restart_required":
+            self.running_experiment = False
+            self.experiment_task.cancel()
+
+            # exit process cleanly
+            os._exit(0)
 
         return {"type": "error", "error": "unknown_command"}
 
