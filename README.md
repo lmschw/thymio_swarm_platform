@@ -1,1 +1,4 @@
-# thymio_swarm_platform
+# Thymio Swarm Platform
+
+This repository allows you 
+

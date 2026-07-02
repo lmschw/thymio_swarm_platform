@@ -2,6 +2,7 @@ import asyncio
 import socket
 import json
 import asyncio
+import os
 
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.protocol.messages import Ping, Status, Stop, StartExperiment
@@ -10,8 +11,8 @@ from swarm_platform.controllers.experiments import EXPERIMENTS
 
 class SwarmDaemon:
 
-    COORDINATOR_IP = "10.15.2.63" 
-    COORDINATOR_PORT = 9100
+    COORDINATOR_IP = os.environ["SWARM_COORDINATOR"]
+    COORDINATOR_PORT = int(os.environ["SWARM_COORDINATOR_PORT"])
 
     def __init__(self):
         self.robot = Robot()
@@ -68,10 +69,7 @@ class SwarmDaemon:
     
     async def run(self, host="0.0.0.0", port=9000):
         await self.robot.connect()
-        asyncio.create_task(self.heartbeat_loop())  # start immediately
-        await self.register()
-
-        print("Registered")
+        asyncio.create_task(self.coordinator_loop())
 
         print("Starting TCP server...")
         server = await asyncio.start_server(
@@ -151,5 +149,15 @@ class SwarmDaemon:
 
             except Exception:
                 pass
+
+            await asyncio.sleep(5)
+
+    async def coordinator_loop(self):
+        while True:
+            try:
+                await self.register()
+                await self.heartbeat_loop()
+            except Exception as e:
+                print(f"Coordinator unavailable: {e}")
 
             await asyncio.sleep(5)
