@@ -5,8 +5,9 @@ from .exceptions import ExperimentNotFound
 
 
 class ProjectManager:
-    def __init__(self):
+    def __init__(self, path: str):
         self.project = None
+        self.activate(path)
 
     def activate(self, path: str):
         self.project = ProjectLoader().load(path)
