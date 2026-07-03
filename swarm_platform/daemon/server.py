@@ -17,7 +17,7 @@ class SwarmDaemon:
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 
         self.project_manager = ProjectManager(
-            Path("project")
+            Path("example_project")
         )
 
         self.robot = Robot()
