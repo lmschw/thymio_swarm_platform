@@ -83,3 +83,12 @@ class ObstacleAvoidance:
                 )
 
                 self.logger.close()
+
+    async def pause(self):
+        self.paused = True
+
+    async def resume(self):
+        self.paused = False
+
+    async def stop(self):
+        self.running = False
