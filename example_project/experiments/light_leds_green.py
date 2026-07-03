@@ -3,6 +3,8 @@ import asyncio
 
 class LightLEDsGreen:
 
+    name = "light_leds_green"
+
     def __init__(self, robot, config=None):
         self.robot = robot
         self.config = config or {}

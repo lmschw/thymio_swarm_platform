@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "tdmclient==0.1.21",
     "numpy",
+    "pyyaml>=6.0.3",
 ]
 
 [tool.setuptools.packages.find]

@@ -1,0 +1,53 @@
+from pathlib import Path
+import importlib
+import yaml
+import sys
+
+from .exceptions import ProjectLoadError
+from .project import Project
+
+
+class ProjectLoader:
+
+    MANIFEST = "swarm_project.yaml"
+
+    def load(self, directory: str | Path) -> Project:
+
+        directory = Path(directory)
+
+        manifest = directory / self.MANIFEST
+
+        if not manifest.exists():
+            raise ProjectLoadError(
+                f"No {self.MANIFEST} found in {directory}"
+            )
+
+        with manifest.open() as f:
+            data = yaml.safe_load(f)
+
+        if str(directory) not in sys.path:
+            sys.path.insert(0, str(directory))
+
+        experiments = {}
+
+        for class_path in data["experiments"]:
+
+            module_name, class_name = class_path.rsplit(".", 1)
+
+            module = importlib.import_module(module_name)
+
+            experiment_cls = getattr(module, class_name)
+
+            if not hasattr(experiment_cls, "name"):
+                raise ProjectLoadError(
+                    f"{class_name} has no 'name' attribute."
+                )
+
+            experiments[experiment_cls.name] = experiment_cls
+
+        return Project(
+            name=data["name"],
+            version=data["version"],
+            path=directory,
+            experiments=experiments,
+        )

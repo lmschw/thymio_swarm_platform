@@ -2,6 +2,9 @@ import asyncio
 
 
 class ObstacleAvoidance:
+
+    name = "obstacle_avoidance"
+
     FORWARD_SPEED = 200
     TURN_SPEED = 150
     THRESHOLD = 1800

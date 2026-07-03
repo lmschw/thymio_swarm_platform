@@ -3,17 +3,21 @@ import socket
 import json
 import os
 import subprocess
+from pathlib import Path
 
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.robot.robot import Robot
-from swarm_platform.controllers.experiments import EXPERIMENTS
-
+from swarm_platform.projects.manager import ProjectManager
 
 class SwarmDaemon:
 
     def __init__(self):
         self.coordinator_ip = os.getenv("SWARM_COORDINATOR", "10.15.2.63")
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
+
+        self.project_manager = ProjectManager(
+            Path("example_project")
+        )
 
         self.robot = Robot()
         self.experiment = None
@@ -108,10 +112,7 @@ class SwarmDaemon:
         print(f"Loading experiment: {name}")
         print("Starting experiment now...")
 
-        if name not in EXPERIMENTS:
-            return {"type": "error", "error": f"Unknown experiment: {name}"}
-
-        experiment_cls = EXPERIMENTS[name]
+        experiment_cls = self.project_manager.experiment(name)  
 
         self.experiment = experiment_cls(
             robot=self.robot,
