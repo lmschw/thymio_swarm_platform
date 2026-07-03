@@ -146,6 +146,9 @@ class SwarmDaemon:
             logger=self.logger,
         )
 
+        print("[DAEMON EXPERIMENT CLASS]", experiment_cls, flush=True)
+
+
         self.running_experiment = True
 
         self.experiment_task = asyncio.create_task(self.experiment.run())

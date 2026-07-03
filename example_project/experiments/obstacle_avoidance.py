@@ -17,8 +17,11 @@ class ObstacleAvoidance:
         self.running = True
         self.paused = False
 
+        print("[OBSTACLE INIT]", id(self), flush=True)
+
 
     async def run(self):
+        print("[OBSTACLE RUN ENTRY]", flush=True)
         print("OBSTACLE AVOIDANCE STARTED", flush=True)
         print("[EXPERIMENT INSTANCE]", id(self), flush=True)
         print("[LOGGER ON INSTANCE]", getattr(self, "logger", None), flush=True)
