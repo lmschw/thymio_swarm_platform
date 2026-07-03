@@ -80,6 +80,7 @@ class SwarmDaemon:
 
         if t == "update_code":
             subprocess.run(["git", "pull"], check=True)
+            subprocess.run(["uv", "sync"], check=True)
 
             # tell systemd to restart safely
             return {"type": "updated_restart_required"}

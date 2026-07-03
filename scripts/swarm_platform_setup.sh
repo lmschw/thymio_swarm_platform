@@ -10,19 +10,22 @@ PROJECT_DIR="$(pwd)"
 CURRENT_USER="$USER"
 
 #
-# Create virtual environment
+# Install uv (if not present)
 #
+if ! command -v uv &> /dev/null; then
+    echo "Installing uv..."
+    curl -Ls https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.cargo/bin:$PATH"
+fi
 
-python3 -m venv .venv
-source .venv/bin/activate
-
-pip install --upgrade pip
-pip install -e .
+#
+# Install dependencies (deterministic)
+#
+uv sync
 
 #
 # Create environment config
 #
-
 sudo tee /etc/swarm-platform.conf >/dev/null <<EOF
 SWARM_COORDINATOR=10.15.2.63
 SWARM_COORDINATOR_PORT=9100
@@ -31,7 +34,6 @@ EOF
 #
 # Create swarm daemon service
 #
-
 sudo tee /etc/systemd/system/swarm-daemon.service >/dev/null <<EOF
 [Unit]
 Description=Swarm Platform Daemon
@@ -45,7 +47,7 @@ WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 EnvironmentFile=/etc/swarm-platform.conf
 Environment=PYTHONUNBUFFERED=1
 
-ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
+ExecStart=/usr/bin/env uv run swarm_platform.daemon.main
 
 Restart=always
 RestartSec=3
@@ -60,13 +62,11 @@ EOF
 #
 # Reload systemd
 #
-
 sudo systemctl daemon-reload
 
 #
 # Enable and start daemon
 #
-
 sudo systemctl enable swarm-daemon.service
 sudo systemctl restart swarm-daemon.service
 
@@ -75,5 +75,4 @@ echo "================================="
 echo "Swarm Platform installed"
 echo "Daemon service enabled"
 echo "Coordinator: 10.15.2.63:9100"
-echo "Log file: ${PROJECT_DIR}/swarm-daemon.log"
 echo "================================="
