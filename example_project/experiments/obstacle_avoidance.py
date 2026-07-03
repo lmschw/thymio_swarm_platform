@@ -3,6 +3,7 @@ import asyncio
 
 async def run(self):
     print(">>> OBSTACLE AVOIDANCE STARTED <<<", flush=True)
+    print("[DEBUG] logger =", self.logger, flush=True)
 
     try:
         while self.running:
