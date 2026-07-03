@@ -13,8 +13,7 @@ sudo apt install -y \
     python3-venv \
     flatpak \
     wget \
-    curl \
-    uv
+    curl
 
 #
 # Install uv (if not present)
