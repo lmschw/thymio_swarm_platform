@@ -10,15 +10,6 @@ PROJECT_DIR="$(pwd)"
 CURRENT_USER="$USER"
 
 #
-# Install uv (if not present)
-#
-if ! command -v uv &> /dev/null; then
-    echo "Installing uv..."
-    curl -Ls https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.cargo/bin:$PATH"
-fi
-
-#
 # Install dependencies (deterministic)
 #
 uv sync
@@ -47,7 +38,7 @@ WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 EnvironmentFile=/etc/swarm-platform.conf
 Environment=PYTHONUNBUFFERED=1
 
-ExecStart=/usr/bin/env uv run swarm_platform.daemon.main
+ExecStart=/home/thymio/.local/bin/uv run swarm_platform.daemon.main
 
 Restart=always
 RestartSec=3
