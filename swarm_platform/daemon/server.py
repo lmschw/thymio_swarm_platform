@@ -35,13 +35,6 @@ class SwarmDaemon:
         session_id = msg.get("session_id")
         print(f"[SESSION {session_id}] {t}")
 
-        if self.active_session and session_id != self.active_session:
-            print(f"[SESSION {session_id}] ERROR: active session is {self.active_session}")
-            return {
-                "type": "error",
-                "error": "wrong_session",
-            }
-
         print("before ping")
         if t == "ping":
             return {"type": "pong"}
@@ -89,7 +82,6 @@ class SwarmDaemon:
         print("before start_experiment")
         if t == "start_experiment":
             session_id = msg.get("session_id")
-            self.active_session = session_id
             print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
             self.logger = SessionLogger(
                 session_id=msg.get("session_id", "no-session"),
