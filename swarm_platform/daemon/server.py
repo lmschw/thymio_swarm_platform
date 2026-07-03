@@ -32,8 +32,7 @@ class SwarmDaemon:
 
     async def handle(self, msg: dict):
         t = msg.get("type")
-        session_id = msg.get("session_id")
-        print(f"[SESSION {session_id}] {t}")
+        print(f"[DAEMON] handling message: {t}", flush=True)
 
         print("before ping")
         if t == "ping":
@@ -45,6 +44,10 @@ class SwarmDaemon:
                 "type": "status",
                 "running": self.running_experiment,
             }
+        
+        if t in ["pause", "resume", "stop"]:
+            session_id = msg.get("session_id")
+            print(f"[SESSION {session_id}] {t}")
         
         print("before pause")
         if t == "pause":
