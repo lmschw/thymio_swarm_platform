@@ -22,6 +22,7 @@ class SwarmDaemon:
 
         self.robot = Robot()
         self.experiment = None
+        self.experiment_task = None
         self.running_experiment = False
 
     # ---------------------------
@@ -30,6 +31,8 @@ class SwarmDaemon:
 
     async def handle(self, msg: dict):
         t = msg.get("type")
+        session_id = msg.get("session_id")
+        print(f"[SESSION {session_id}] {t}")
 
         if t == "ping":
             return {"type": "pong"}
@@ -40,10 +43,6 @@ class SwarmDaemon:
                 "running": self.running_experiment,
             }
         
-        if t in ("pause", "resume", "stop"):
-            session_id = msg.get("session_id")
-            print(f"[SESSION {session_id}] {t}", flush=True)
-
         if t == "pause":
             if self.experiment:
                 await self.experiment.pause()
@@ -61,10 +60,16 @@ class SwarmDaemon:
                 await self.experiment.stop()
 
             if self.experiment_task:
-                self.experiment_task.cancel()
+                try:
+                    await self.experiment_task
+                except asyncio.CancelledError:
+                    pass
 
             await self.robot.stop()
             await self.robot.top_led(0, 0, 0)
+
+            self.experiment = None
+            self.experiment_task = None
 
             return {"type": "stopped"}
 
