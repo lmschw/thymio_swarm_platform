@@ -24,6 +24,7 @@ class SwarmDaemon:
         self.experiment = None
         self.experiment_task = None
         self.running_experiment = False
+        self.active_session = None
 
     # ---------------------------
     # MESSAGE HANDLING
@@ -34,7 +35,7 @@ class SwarmDaemon:
         session_id = msg.get("session_id")
         print(f"[SESSION {session_id}] {t}")
 
-        if session_id != self.active_session:
+        if self.active_session and session_id != self.active_session:
             return {
                 "type": "error",
                 "error": "wrong_session",
@@ -60,20 +61,22 @@ class SwarmDaemon:
             return {"type": "resumed"}
 
         if t == "stop":
-            print("STOP: entering handler")
-
             self.running_experiment = False
 
             if self.experiment:
-                print("STOP: calling experiment.stop()")
                 await self.experiment.stop()
-                print("STOP: experiment.stop() returned")
+
+            if self.experiment_task:
+                try:
+                    await self.experiment_task
+                except asyncio.CancelledError:
+                    pass
 
             await self.robot.stop()
-            print("STOP: robot.stop() returned")
-
             await self.robot.top_led(0, 0, 0)
-            print("STOP: led cleared")
+
+            self.experiment = None
+            self.experiment_task = None
 
             return {"type": "stopped"}
 
