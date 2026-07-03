@@ -142,37 +142,40 @@ class SwarmDaemon:
             self.running_experiment = False
 
     async def _start_experiment(self, msg):
-        print(f"Loading experiment msg: {msg}")
+        print("1")
 
         if self.running_experiment:
+            print("already running")
             return {"type": "error", "error": "Experiment already running"}
-        
+
+        print("2")
+
         name = msg["name"]
         config = msg.get("config", {})
-        
-        print(f"Loading experiment: {name}")
-        print("Starting experiment now...")
 
-        experiment_cls = self.project_manager.experiment(name)  
+        print("3")
+
+        experiment_cls = self.project_manager.experiment(name)
+
+        print("4", experiment_cls)
 
         self.experiment = experiment_cls(
-            config=config,
             robot=self.robot,
+            config=config,
             logger=self.logger,
         )
 
-        print("[DAEMON EXPERIMENT CLASS]", experiment_cls, flush=True)
-
+        print("5", self.experiment)
 
         self.running_experiment = True
 
-        self.experiment_task = asyncio.create_task(self.experiment.run())
+        print("6")
 
-        print(f"[DAEMON] experiment task started: {self.experiment_task}")
-
-        self.experiment_task.add_done_callback(
-            lambda t: print(f"[EXPERIMENT DONE] {t.exception()}")
+        self.experiment_task = asyncio.create_task(
+            self._run_experiment()
         )
+
+        print("7", self.experiment_task)
 
         return {"type": "started"}
 
