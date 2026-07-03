@@ -1,6 +1,8 @@
 import asyncio
 import json
 
+from swarm_platform.controller.session import SwarmSession
+
 
 class SwarmClient:
 
@@ -65,3 +67,6 @@ class SwarmClient:
             "name": name,
             "config": config
         })
+
+    def session(self, name=None):
+        return SwarmSession(self, name=name)

@@ -1,4 +1,5 @@
 import asyncio
+from swarm_platform.controller import session
 from swarm_platform.controller.client import SwarmClient
 from swarm_platform.controller.utils.utils import normalize_robots
 
@@ -18,8 +19,9 @@ async def main():
 
     print("\nStarting obstacle avoidance...\n")
 
-    await client.activate_project("test_project")
-    await client.start_experiment("obstacle_avoidance", {})
+    session = client.session("run-001")
+    await session.activate_project("test_project")
+    await session.start("obstacle_avoidance", {})
 
     while True:
 
@@ -27,15 +29,15 @@ async def main():
 
         if cmd == "p":
             print("Pausing...")
-            await client.broadcast({"type": "pause"})
+            await session.pause()
 
         elif cmd == "r":
             print("Resuming...")
-            await client.broadcast({"type": "resume"})
+            await session.resume()
 
         elif cmd == "s":
             print("Stopping...")
-            await client.broadcast({"type": "stop"})
+            await session.stop()
             break
 
 

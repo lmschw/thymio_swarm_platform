@@ -1,4 +1,5 @@
 import asyncio
+from swarm_platform.controller import client
 from swarm_platform.controller.client import SwarmClient
 from swarm_platform.controller.utils.utils import normalize_robots
 
@@ -18,24 +19,24 @@ async def main():
 
     print("\nStarting light LEDs green...\n")
 
-    await client.activate_project("test_project")
-    await client.start_experiment("light_leds_green", {})
+    session = client.session("run-001")
+    await session.activate_project("test_project")
+    await session.start("light_leds_green", {})
 
     while True:
-
         cmd = input("\n[p]ause  [r]esume  [s]top > ").strip().lower()
 
         if cmd == "p":
             print("Pausing...")
-            await client.broadcast({"type": "pause"})
+            await session.pause()
 
         elif cmd == "r":
             print("Resuming...")
-            await client.broadcast({"type": "resume"})
+            await session.resume()
 
         elif cmd == "s":
             print("Stopping...")
-            await client.broadcast({"type": "stop"})
+            await session.stop()
             break
 
 
