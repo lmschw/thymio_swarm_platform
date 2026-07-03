@@ -44,29 +44,29 @@ class SwarmDaemon:
             session_id = msg.get("session_id")
             print(f"[SESSION {session_id}] {t}", flush=True)
 
-            if t == "pause":
-                if self.experiment:
-                    await self.experiment.pause()
-                return {"type": "paused"}
+        if t == "pause":
+            if self.experiment:
+                await self.experiment.pause()
+            return {"type": "paused"}
 
-            if t == "resume":
-                if self.experiment:
-                    await self.experiment.resume()
-                return {"type": "resumed"}
+        if t == "resume":
+            if self.experiment:
+                await self.experiment.resume()
+            return {"type": "resumed"}
 
-            if t == "stop":
-                self.running_experiment = False
+        if t == "stop":
+            self.running_experiment = False
 
-                if self.experiment:
-                    await self.experiment.stop()
+            if self.experiment:
+                await self.experiment.stop()
 
-                if self.experiment_task:
-                    self.experiment_task.cancel()
+            if self.experiment_task:
+                self.experiment_task.cancel()
 
-                await self.robot.stop()
-                await self.robot.top_led(0, 0, 0)
+            await self.robot.stop()
+            await self.robot.top_led(0, 0, 0)
 
-                return {"type": "stopped"}
+            return {"type": "stopped"}
 
         if t == "start_experiment":
             session_id = msg.get("session_id")
