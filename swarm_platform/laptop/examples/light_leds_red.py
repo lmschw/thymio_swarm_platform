@@ -1,55 +1,44 @@
 import asyncio
-
 from swarm_platform.laptop.client import SwarmClient
+from swarm_platform.laptop.utils.utils import normalize_robots
+
+COORDINATOR_IP = "10.15.2.63"
 
 
 async def main():
+    client = SwarmClient(COORDINATOR_IP)
 
-    client = SwarmClient("10.15.2.63")
+    robots_raw = await client.list_robots()
+    robots = normalize_robots(robots_raw)
 
-    robots = await client.list_robots()
-
-    print(f"Found {len(robots)} robots")
+    print(f"\nFound {len(robots)} robots\n")
 
     for robot_id, robot in robots.items():
-        print(f"  {robot_id}: {robot['ip']}")
+        print(f"  {robot_id}: {robot['ip']}:{robot.get('port', 9000)}")
 
-    await client.broadcast(
-        {
-            "type": "start_experiment",
-            "name": "light_leds_red",
-            "config": {},
-        }
-    )
+    print("\nStarting obstacle avoidance...\n")
+
+    await client.broadcast({
+        "type": "start_experiment",
+        "name": "light_leds_red",
+        "config": {},
+    })
 
     while True:
 
-        cmd = input("[p]ause  [r]esume  [s]top > ").lower()
+        cmd = input("\n[p]ause  [r]esume  [s]top > ").strip().lower()
 
         if cmd == "p":
-
-            await client.broadcast(
-                {
-                    "type": "pause",
-                }
-            )
+            print("Pausing...")
+            await client.broadcast({"type": "pause"})
 
         elif cmd == "r":
-
-            await client.broadcast(
-                {
-                    "type": "resume",
-                }
-            )
+            print("Resuming...")
+            await client.broadcast({"type": "resume"})
 
         elif cmd == "s":
-
-            await client.broadcast(
-                {
-                    "type": "stop",
-                }
-            )
-
+            print("Stopping...")
+            await client.broadcast({"type": "stop"})
             break
 
 

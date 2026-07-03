@@ -5,23 +5,18 @@ from .exceptions import ExperimentNotFound
 
 
 class ProjectManager:
+    def __init__(self):
+        self.project = None
 
-    def __init__(self, project_directory: str | Path):
-        self.project_directory = Path(project_directory)
-        self.loader = ProjectLoader()
-        self.project = self.loader.load(self.project_directory)
-
-    def reload(self):
-        self.project = self.loader.load(self.project_directory)
+    def activate(self, path: str):
+        self.project = ProjectLoader().load(path)
 
     def experiment(self, name: str):
-
-        try:
-            return self.project.experiments[name]
-
-        except KeyError:
-            raise ExperimentNotFound(name)
+        return self.project.experiments[name]
 
     def list_experiments(self):
+        return list(self.project.experiments.keys())
 
-        return sorted(self.project.experiments.keys())
+    def reload(self):
+        if self.project:
+            self.activate(self.project.path)
