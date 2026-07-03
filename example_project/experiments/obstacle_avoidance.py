@@ -9,16 +9,17 @@ class ObstacleAvoidance:
     TURN_SPEED = 150
     THRESHOLD = 1800
 
-    def __init__(self, robot, config=None):
+    def __init__(self, robot, config=None, logger=None):
         self.robot = robot
         self.config = config or {}
+        self.logger = logger 
 
         self.running = True
         self.paused = False
 
     async def run(self):
         print(">>> OBSTACLE AVOIDANCE STARTED <<<", flush=True)
-
+        print(f"[LOGGER] attached: {self.logger is not None}", flush=True)
         while self.running:
 
             if self.paused:
