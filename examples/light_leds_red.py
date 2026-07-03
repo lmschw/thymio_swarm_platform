@@ -16,13 +16,11 @@ async def main():
     for robot_id, robot in robots.items():
         print(f"  {robot_id}: {robot['ip']}:{robot.get('port', 9000)}")
 
-    print("\nStarting obstacle avoidance...\n")
+    print("\nStarting light LEDs red...\n")
 
-    await client.broadcast({
-        "type": "start_experiment",
-        "name": "light_leds_red",
-        "config": {},
-    })
+    await client.activate_project("test_project")
+    await client.start_experiment("light_leds_red", {})
+
 
     while True:
 

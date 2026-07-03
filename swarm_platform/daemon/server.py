@@ -16,7 +16,7 @@ class SwarmDaemon:
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 
         self.project_manager = ProjectManager(
-            Path("example_project")
+            Path("project")
         )
 
         self.robot = Robot()
@@ -78,6 +78,19 @@ class SwarmDaemon:
 
             # exit process cleanly
             os._exit(0)
+
+        if t == "activate_project":
+            path = msg["path"]
+            print(f"[PROJECT] Activating: {path}", flush=True)
+            self.project_manager.activate(path)
+
+            # stop running experiment on switch
+            self.running_experiment = False
+
+            if self.experiment:
+                await self.robot.stop()
+
+            return {"type": "project_activated"}
 
         return {"type": "error", "error": "unknown_command"}
 

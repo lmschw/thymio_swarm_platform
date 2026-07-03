@@ -52,3 +52,16 @@ class SwarmClient:
                 for robot in robots.values()
             )
         )
+
+    async def activate_project(self, path: str):
+        await self.broadcast({
+            "type": "activate_project",
+            "path": path
+        })
+
+    async def start_experiment(self, name: str, config: dict):
+        await self.broadcast({
+            "type": "start_experiment",
+            "name": name,
+            "config": config
+        })

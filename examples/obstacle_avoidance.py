@@ -18,11 +18,8 @@ async def main():
 
     print("\nStarting obstacle avoidance...\n")
 
-    await client.broadcast({
-        "type": "start_experiment",
-        "name": "light_leds_green",
-        "config": {},
-    })
+    await client.activate_project("test_project")
+    await client.start_experiment("obstacle_avoidance", {})
 
     while True:
 
