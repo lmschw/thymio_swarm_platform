@@ -60,22 +60,20 @@ class SwarmDaemon:
             return {"type": "resumed"}
 
         if t == "stop":
+            print("STOP: entering handler")
+
             self.running_experiment = False
 
             if self.experiment:
+                print("STOP: calling experiment.stop()")
                 await self.experiment.stop()
-
-            if self.experiment_task:
-                try:
-                    await self.experiment_task
-                except asyncio.CancelledError:
-                    pass
+                print("STOP: experiment.stop() returned")
 
             await self.robot.stop()
-            await self.robot.top_led(0, 0, 0)
+            print("STOP: robot.stop() returned")
 
-            self.experiment = None
-            self.experiment_task = None
+            await self.robot.top_led(0, 0, 0)
+            print("STOP: led cleared")
 
             return {"type": "stopped"}
 
