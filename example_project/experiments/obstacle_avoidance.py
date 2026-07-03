@@ -1,25 +1,10 @@
 import asyncio
 
 
-class ObstacleAvoidance:
+async def run(self):
+    print(">>> OBSTACLE AVOIDANCE STARTED <<<", flush=True)
 
-    name = "obstacle_avoidance"
-
-    FORWARD_SPEED = 200
-    TURN_SPEED = 150
-    THRESHOLD = 1800
-
-    def __init__(self, robot, config=None, logger=None):
-        self.robot = robot
-        self.config = config or {}
-        self.logger = logger 
-
-        self.running = True
-        self.paused = False
-
-    async def run(self):
-        print(">>> OBSTACLE AVOIDANCE STARTED <<<", flush=True)
-        print(f"[LOGGER] attached: {self.logger is not None}", flush=True)
+    try:
         while self.running:
 
             if self.paused:
@@ -40,41 +25,39 @@ class ObstacleAvoidance:
                 if left < right:
                     left_speed = -self.TURN_SPEED
                     right_speed = self.TURN_SPEED
-                    await self.robot.drive(left_speed, right_speed)
                 else:
                     left_speed = self.TURN_SPEED
                     right_speed = -self.TURN_SPEED
-                    await self.robot.drive(left_speed, right_speed)
 
             else:
+                await self.robot.top_led(0, 255, 0)
                 left_speed = self.FORWARD_SPEED
                 right_speed = self.FORWARD_SPEED
-                await self.robot.top_led(0, 255, 0)
-                await self.robot.drive(left_speed, right_speed)
+
+            await self.robot.drive(left_speed, right_speed)
 
             if self.logger:
                 self.logger.log(
-                    state={
-                        "proximity": prox
-                    },
+                    state={"proximity": prox},
                     command={
                         "left": left_speed,
                         "right": right_speed,
                     }
                 )
-            else:
-                print("[LOGGER] not attached, skipping log", flush=True)
 
             await asyncio.sleep(0.05)
 
+    except asyncio.CancelledError:
+        print("[EXPERIMENT] Cancelled safely", flush=True)
+
+    finally:
         await self.robot.stop()
         await self.robot.top_led(0, 0, 0)
 
-    async def pause(self):
-        self.paused = True
+        if self.logger:
+            self.logger.log(
+                state={"event": "shutdown"},
+                command=None
+            )
 
-    async def resume(self):
-        self.paused = False
-
-    async def stop(self):
-        self.running = False
+            self.logger.close()
