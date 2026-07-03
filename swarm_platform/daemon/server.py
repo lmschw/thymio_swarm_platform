@@ -8,6 +8,7 @@ from pathlib import Path
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
+from swarm_platform.daemon.logger import SessionLogger
 
 class SwarmDaemon:
 
@@ -70,6 +71,10 @@ class SwarmDaemon:
         if t == "start_experiment":
             session_id = msg.get("session_id")
             print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
+            self.logger = SessionLogger(
+                session_id=msg.get("session_id", "no-session"),
+                robot_id=socket.gethostname(),
+            )
             return await self._start_experiment(msg)
 
         if t == "update_code":
@@ -135,8 +140,9 @@ class SwarmDaemon:
         experiment_cls = self.project_manager.experiment(name)  
 
         self.experiment = experiment_cls(
+            config=config,
             robot=self.robot,
-            config=config
+            logger=self.logger,
         )
 
         self.running_experiment = True

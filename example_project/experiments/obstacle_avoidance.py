@@ -37,13 +37,28 @@ class ObstacleAvoidance:
                 await self.robot.top_led(255, 255, 0)
 
                 if left < right:
-                    await self.robot.drive(-self.TURN_SPEED, self.TURN_SPEED)
+                    left_speed = -self.TURN_SPEED
+                    right_speed = self.TURN_SPEED
+                    await self.robot.drive(left_speed, right_speed)
                 else:
-                    await self.robot.drive(self.TURN_SPEED, -self.TURN_SPEED)
+                    left_speed = self.TURN_SPEED
+                    right_speed = -self.TURN_SPEED
+                    await self.robot.drive(left_speed, right_speed)
 
             else:
+                left_speed = self.FORWARD_SPEED
+                right_speed = self.FORWARD_SPEED
                 await self.robot.top_led(0, 255, 0)
-                await self.robot.drive(self.FORWARD_SPEED, self.FORWARD_SPEED)
+                await self.robot.drive(left_speed, right_speed)
+
+            self.logger.log(
+                state=prox,
+                command={
+                    "type": "drive",
+                    "left": left_speed,
+                    "right": right_speed,
+                }
+            )
 
             await asyncio.sleep(0.05)
 
