@@ -42,25 +42,30 @@ class SwarmDaemon:
                 "error": "wrong_session",
             }
 
+        print("before ping")
         if t == "ping":
             return {"type": "pong"}
 
+        print("before status")
         if t == "status":
             return {
                 "type": "status",
                 "running": self.running_experiment,
             }
         
+        print("before pause")
         if t == "pause":
             if self.experiment:
                 await self.experiment.pause()
             return {"type": "paused"}
 
+        print("before resume")
         if t == "resume":
             if self.experiment:
                 await self.experiment.resume()
             return {"type": "resumed"}
 
+        print("before stop")
         if t == "stop":
             self.running_experiment = False
 
@@ -81,6 +86,7 @@ class SwarmDaemon:
 
             return {"type": "stopped"}
 
+        print("before start_experiment")
         if t == "start_experiment":
             session_id = msg.get("session_id")
             self.active_session = session_id
@@ -92,6 +98,7 @@ class SwarmDaemon:
             print("[DAEMON] logger created ->", self.logger, flush=True)
             return await self._start_experiment(msg)
 
+        print("before update_code")
         if t == "update_code":
             subprocess.run(["git", "pull"], check=True)
             subprocess.run(["uv", "sync"], check=True)
@@ -99,6 +106,7 @@ class SwarmDaemon:
             # tell systemd to restart safely
             return {"type": "updated_restart_required"}
         
+        print("before update_restart_required")
         if t == "updated_restart_required":
             self.running_experiment = False
             self.experiment_task.cancel()
@@ -106,6 +114,7 @@ class SwarmDaemon:
             # exit process cleanly
             os._exit(0)
 
+        print("before activate_project")
         if t == "activate_project":
             path = msg["path"]
             print(f"[PROJECT] Activating: {path}", flush=True)
