@@ -62,6 +62,8 @@ class ObstacleAvoidance:
                         "right": right_speed,
                     }
                 )
+            else:
+                print("[LOGGER] not attached, skipping log", flush=True)
 
             await asyncio.sleep(0.05)
 

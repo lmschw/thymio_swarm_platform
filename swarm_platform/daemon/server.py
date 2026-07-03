@@ -75,6 +75,7 @@ class SwarmDaemon:
                 session_id=msg.get("session_id", "no-session"),
                 robot_id=socket.gethostname(),
             )
+            print("[DAEMON] logger created ->", self.logger, flush=True)
             return await self._start_experiment(msg)
 
         if t == "update_code":
