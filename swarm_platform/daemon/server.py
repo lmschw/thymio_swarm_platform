@@ -59,6 +59,7 @@ class SwarmDaemon:
                 self.experiment_task.cancel()
 
             await self.robot.stop()
+            await self.robot.top_led(0, 0, 0)
 
             return {"type": "stopped"}
 
@@ -89,6 +90,7 @@ class SwarmDaemon:
 
             if self.experiment:
                 await self.robot.stop()
+                await self.robot.top_led(0, 0, 0)
 
             return {"type": "project_activated"}
 

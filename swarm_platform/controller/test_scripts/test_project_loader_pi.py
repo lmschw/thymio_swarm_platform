@@ -2,7 +2,7 @@ import asyncio
 import json
 import sys
 
-from swarm_platform.laptop.client import SwarmClient
+from swarm_platform.controller.client import SwarmClient
 
 
 COORDINATOR_IP = "10.15.2.63"  # change if needed

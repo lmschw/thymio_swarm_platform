@@ -1,6 +1,6 @@
 import asyncio
-from swarm_platform.laptop.client import SwarmClient
-from swarm_platform.laptop.utils.utils import normalize_robots
+from swarm_platform.controller.client import SwarmClient
+from swarm_platform.controller.utils.utils import normalize_robots
 
 COORDINATOR_IP = "10.15.2.63"
 

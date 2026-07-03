@@ -1,5 +1,5 @@
 import asyncio
-from swarm_platform.laptop.client import SwarmClient
+from swarm_platform.controller.client import SwarmClient
 
 async def main():
 
