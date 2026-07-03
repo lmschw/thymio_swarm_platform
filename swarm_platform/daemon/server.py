@@ -36,6 +36,7 @@ class SwarmDaemon:
         print(f"[SESSION {session_id}] {t}")
 
         if self.active_session and session_id != self.active_session:
+            print(f"[SESSION {session_id}] ERROR: active session is {self.active_session}")
             return {
                 "type": "error",
                 "error": "wrong_session",
