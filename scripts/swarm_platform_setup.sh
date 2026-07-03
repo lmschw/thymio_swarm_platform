@@ -38,7 +38,8 @@ WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 EnvironmentFile=/etc/swarm-platform.conf
 Environment=PYTHONUNBUFFERED=1
 
-ExecStart=/home/thymio/.local/bin/uv run swarm_platform.daemon.main
+ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
+WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
 
 Restart=always
 RestartSec=3
