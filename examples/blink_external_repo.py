@@ -23,7 +23,7 @@ async def main():
     session = project.session("test-run")
 
     print("Starting...")
-    await session.start("blink")
+    await session.start("sway")
 
     await asyncio.sleep(10)
 
