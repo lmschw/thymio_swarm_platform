@@ -18,6 +18,10 @@ from swarm_platform.daemon.log_manager import LogManager
 class SwarmDaemon:
 
     def __init__(self):
+        print("cwd =", Path.cwd(), flush=True)
+        print("__file__ =", __file__, flush=True)
+        print("git root =", Path(__file__).resolve().parents[2], flush=True)
+        
         self.coordinator_ip = os.getenv("SWARM_COORDINATOR", "10.15.2.63")
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 

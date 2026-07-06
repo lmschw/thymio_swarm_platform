@@ -33,8 +33,22 @@ class ProjectManager:
 
     def update(self, project: str):
         path = self.projects_dir / project
+        print("Updating from", Path.cwd(), flush=True)
+
+        subprocess.run(["pwd"])
+        subprocess.run(["git", "remote", "-v"])
+        subprocess.run(["git", "rev-parse", "--show-toplevel"])
+        
+        ROOT = Path(__file__).resolve().parents[2]
+
         subprocess.run(
-            ["git", "-C", str(path), "pull"],
+            ["git", "-C", str(ROOT), "pull"],
+            check=True,
+        )
+
+        subprocess.run(
+            [str(Path.home()/".local/bin/uv"), "sync"],
+            cwd=ROOT,
             check=True,
         )
 
