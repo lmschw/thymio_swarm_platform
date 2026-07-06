@@ -36,6 +36,7 @@ class SwarmDaemon:
     async def handle(self, msg: dict):
         t = msg.get("type")
         print(f"[DAEMON] handling message: {t}", flush=True)
+        print(msg, flush=True)
 
         if t == "ping":
             return {"type": "pong"}
