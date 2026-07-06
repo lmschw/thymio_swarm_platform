@@ -41,8 +41,15 @@ class SwarmClient:
         writer.write((json.dumps(message) + "\n").encode())
         await writer.drain()
 
-        response = json.loads((await reader.readline()).decode())
+        data = await reader.readline()
 
+        if data:
+            response = json.loads(data.decode())
+        else:
+            response = {
+                "type": "connection_closed"
+            }
+        
         writer.close()
         await writer.wait_closed()
 

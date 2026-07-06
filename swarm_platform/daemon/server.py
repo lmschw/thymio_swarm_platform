@@ -114,13 +114,10 @@ class SwarmDaemon:
                 uv = os.environ["UV_BIN"]
                 print(f"2. uv = {uv}", flush=True)
 
-                subprocess.run([uv, "--version"], check=True)
-                print("3. uv works", flush=True)
-
                 subprocess.run([uv, "sync"], check=True)
-                print("4. uv sync finished", flush=True)
+                print("3. uv sync finished", flush=True)
 
-                print("5. exiting", flush=True)
+                print("4. exiting", flush=True)
                 os._exit(0)
 
             except Exception:
