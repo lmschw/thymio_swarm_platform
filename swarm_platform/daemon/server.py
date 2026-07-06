@@ -97,17 +97,11 @@ class SwarmDaemon:
             return await self._start_experiment(msg)
 
         if t == "update_code":
-            subprocess.run(["git", "pull"], check=True)
-            subprocess.run(["uv", "sync"], check=True)
-
-            # tell systemd to restart safely
-            return {"type": "updated_restart_required"}
-        
-        if t == "updated_restart_required":
             self.running_experiment = False
             self.experiment_task.cancel()
-
-            # exit process cleanly
+            subprocess.run(["git", "pull"], check=True)
+            uv = os.environ["UV_BIN"]
+            subprocess.run([uv, "sync"], check=True)
             os._exit(0)
 
         if t == "activate_project":

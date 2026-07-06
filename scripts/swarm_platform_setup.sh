@@ -10,9 +10,23 @@ PROJECT_DIR="$(pwd)"
 CURRENT_USER="$USER"
 
 #
-# Install dependencies (deterministic)
+# Install uv if necessary
 #
-uv sync
+if ! command -v uv >/dev/null 2>&1; then
+    echo "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+
+UV_BIN="$(command -v uv)"
+
+echo "Using uv: ${UV_BIN}"
+
+#
+# Install project dependencies
+#
+"${UV_BIN}" sync
 
 #
 # Create environment config
@@ -20,6 +34,7 @@ uv sync
 sudo tee /etc/swarm-platform.conf >/dev/null <<EOF
 SWARM_COORDINATOR=10.15.2.63
 SWARM_COORDINATOR_PORT=9100
+UV_BIN=${UV_BIN}
 EOF
 
 #
@@ -32,14 +47,13 @@ After=network.target
 
 [Service]
 Type=simple
-User=thymio
-WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
+User=${CURRENT_USER}
+WorkingDirectory=${PROJECT_DIR}
 
 EnvironmentFile=/etc/swarm-platform.conf
 Environment=PYTHONUNBUFFERED=1
 
-ExecStart=/home/thymio/swarm/thymio_swarm_platform/.venv/bin/python -m swarm_platform.daemon.main
-WorkingDirectory=/home/thymio/swarm/thymio_swarm_platform
+ExecStart=${UV_BIN} run -m swarm_platform.daemon.main
 
 Restart=always
 RestartSec=3
@@ -67,4 +81,6 @@ echo "================================="
 echo "Swarm Platform installed"
 echo "Daemon service enabled"
 echo "Coordinator: 10.15.2.63:9100"
+echo "Project: ${PROJECT_DIR}"
+echo "Using uv: ${UV_BIN}"
 echo "================================="
