@@ -19,7 +19,7 @@ async def main():
     print("\nStarting obstacle avoidance...\n")
 
     session = client.session("run-001")
-    await session.activate_project("test_project")
+    await session.activate_project("example_project")
     await session.start("obstacle_avoidance", {})
 
     while True:

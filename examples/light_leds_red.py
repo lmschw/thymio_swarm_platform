@@ -20,7 +20,7 @@ async def main():
     print("\nStarting light LEDs red...\n")
 
     session = client.session("run-001")
-    await session.activate_project("test_project")
+    await session.activate_project("example_project")
     await session.start("light_leds_red", {})
 
     while True:
