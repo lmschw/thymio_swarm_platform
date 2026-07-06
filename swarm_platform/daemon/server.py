@@ -9,6 +9,7 @@ from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
 from swarm_platform.daemon.logger import SessionLogger
+from swarm_platform.daemon.log_manager import LogManager
 
 class SwarmDaemon:
 
@@ -25,6 +26,8 @@ class SwarmDaemon:
         self.experiment_task = None
         self.running_experiment = False
         self.active_session = None
+        self.log_manager = LogManager()
+        self.logger = None
 
     # ---------------------------
     # MESSAGE HANDLING
@@ -86,10 +89,12 @@ class SwarmDaemon:
         if t == "start_experiment":
             session_id = msg.get("session_id")
             print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
-            self.logger = SessionLogger(
-                session_id=msg.get("session_id", "no-session"),
-                robot_id=socket.gethostname(),
+            path = self.log_manager.robot_log(
+                msg["session_id"],
+                socket.gethostname(),
             )
+
+            self.logger = SessionLogger(path)
             print("[DAEMON] logger created ->", self.logger, flush=True)
             return await self._start_experiment(msg)
 
@@ -124,6 +129,33 @@ class SwarmDaemon:
 
             return {"type": "project_activated"}
 
+        if t == "get_log":
+            content = self.log_manager.read(
+                msg["session_id"],
+                socket.gethostname(),
+            )
+
+            if content is None:
+                return {
+                    "type": "error",
+                    "error": "log_not_found",
+                }
+
+            return {
+                "type": "log",
+                "robot_id": socket.gethostname(),
+                "content": content,
+            }
+        
+        if t == "delete_log":
+            self.log_manager.delete(
+                msg["session_id"]
+            )
+
+            return {
+                "type": "deleted",
+            }
+
         return {"type": "error", "error": "unknown_command"}
 
     # ---------------------------
@@ -144,6 +176,10 @@ class SwarmDaemon:
 
         finally:
             self.running_experiment = False
+
+            if self.logger is not None:
+                self.logger.close()
+                self.logger = None
 
     async def _start_experiment(self, msg):
         print("1")

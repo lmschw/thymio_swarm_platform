@@ -1,30 +1,26 @@
-import json
-import time
-from pathlib import Path
+import csv
+
 
 class SessionLogger:
-    def __init__(self, session_id: str, robot_id: str, base_dir="logs"):
-        self.session_id = session_id
-        self.robot_id = robot_id
+    def __init__(self, path):
+        self.file = open(path, "w", newline="")
+        self.writer = csv.writer(self.file)
+        self.header = None
 
-        self.path = Path(base_dir)
-        self.path.mkdir(parents=True, exist_ok=True)
+    def log(self, state, command):
+        row = {}
 
-        self.file = open(
-            self.path / f"{session_id}-{robot_id}.jsonl",
-            "a"
+        row.update(state)
+        row.update(command)
+
+        if self.header is None:
+            self.header = list(row.keys())
+            self.writer.writerow(self.header)
+
+        self.writer.writerow(
+            [row[k] for k in self.header]
         )
 
-    def log(self, state=None, command=None):
-        entry = {
-            "t": time.time(),
-            "session": self.session_id,
-            "robot": self.robot_id,
-            "state": state,
-            "command": command,
-        }
-
-        self.file.write(json.dumps(entry) + "\n")
         self.file.flush()
 
     def close(self):

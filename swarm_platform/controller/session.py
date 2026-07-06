@@ -35,3 +35,13 @@ class SwarmSession:
             "type": "stop",
             "session_id": self.session_id,
         })
+
+    async def collect_logs(self):
+        return await self.client.collect_logs(
+            self.session_id
+        )
+    
+    async def delete_logs(self):
+        await self.client.delete_logs(
+            self.session_id
+        )

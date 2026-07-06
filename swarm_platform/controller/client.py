@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 
 from swarm_platform.controller.session import SwarmSession
 
@@ -70,3 +71,44 @@ class SwarmClient:
 
     def session(self, name=None):
         return SwarmSession(self, name=name)
+
+    async def collect_logs(self, session_id):
+
+        robots = await self.list_robots()
+
+        directory = Path("results") / session_id
+        directory.mkdir(parents=True, exist_ok=True)
+
+        for robot in robots.values():
+
+            reply = await self.send(
+                robot,
+                {
+                    "type": "get_log",
+                    "session_id": session_id,
+                },
+            )
+
+            if reply.get("type") != "log":
+                continue
+
+            path = directory / f"{reply['robot_id']}.csv"
+
+            path.write_text(reply["content"])
+
+        return directory
+    
+    async def delete_logs(self, session_id):
+        robots = await self.list_robots()
+        await asyncio.gather(
+            *(
+                self.send(
+                    robot,
+                    {
+                        "type": "delete_log",
+                        "session_id": session_id,
+                    },
+                )
+                for robot in robots.values()
+            )
+        )
