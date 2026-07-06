@@ -1,5 +1,5 @@
 import uuid
-
+from pathlib import Path
 
 class SwarmSession:
 
@@ -36,9 +36,11 @@ class SwarmSession:
             "session_id": self.session_id,
         })
 
-    async def collect_logs(self):
-        return await self.client.collect_logs(
-            self.session_id
+    async def collect_logs(self, output_dir="results", delete_remote=True):
+        await self.client.collect_logs(
+            session_id=self.session_id,
+            output_dir=Path(output_dir) / self.session_id,
+            delete_remote=delete_remote,
         )
     
     async def delete_logs(self):

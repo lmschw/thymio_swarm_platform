@@ -1,6 +1,9 @@
 import asyncio
 import json
 from pathlib import Path
+import base64
+import zipfile
+import io
 
 from swarm_platform.controller.session import SwarmSession
 
@@ -72,31 +75,31 @@ class SwarmClient:
     def session(self, name=None):
         return SwarmSession(self, name=name)
 
-    async def collect_logs(self, session_id):
+    async def collect_logs(self, session_id, output_dir, delete_remote=False):
 
         robots = await self.list_robots()
 
-        directory = Path("results") / session_id
-        directory.mkdir(parents=True, exist_ok=True)
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        for robot in robots.values():
+        for robot_id, robot in robots.items():
 
-            reply = await self.send(
+            response = await self.send(
                 robot,
                 {
-                    "type": "get_log",
+                    "type": "collect_logs",
                     "session_id": session_id,
+                    "delete": delete_remote,
                 },
             )
 
-            if reply.get("type") != "log":
+            if response["content"] is None:
                 continue
 
-            path = directory / f"{reply['robot_id']}.csv"
+            data = base64.b64decode(response["content"])
 
-            path.write_text(reply["content"])
-
-        return directory
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+                z.extractall(output_dir / robot_id)
     
     async def delete_logs(self, session_id):
         robots = await self.list_robots()

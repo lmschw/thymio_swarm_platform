@@ -4,6 +4,10 @@ import json
 import os
 import subprocess
 from pathlib import Path
+import base64
+import io
+import zipfile
+import shutil
 
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.robot.robot import Robot
@@ -129,23 +133,11 @@ class SwarmDaemon:
 
             return {"type": "project_activated"}
 
-        if t == "get_log":
-            content = self.log_manager.read(
+        if t == "collect_logs":
+            return await self.collect_logs(
                 msg["session_id"],
-                socket.gethostname(),
+                delete=msg.get("delete", False),
             )
-
-            if content is None:
-                return {
-                    "type": "error",
-                    "error": "log_not_found",
-                }
-
-            return {
-                "type": "log",
-                "robot_id": socket.gethostname(),
-                "content": content,
-            }
         
         if t == "delete_log":
             self.log_manager.delete(
@@ -345,3 +337,33 @@ class SwarmDaemon:
 
         async with server:
             await asyncio.Event().wait()
+
+
+    async def collect_logs(self, session_id, delete=False):
+
+        log_dir = Path("logs") / session_id
+
+        if not log_dir.exists():
+            return {
+                "type": "logs",
+                "content": None,
+            }
+
+        buffer = io.BytesIO()
+
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
+
+            for file in log_dir.rglob("*"):
+                if file.is_file():
+                    z.write(file, file.relative_to(log_dir))
+
+        if delete:
+            shutil.rmtree(log_dir)
+
+        return {
+            "type": "logs",
+            "filename": f"{session_id}.zip",
+            "content": base64.b64encode(
+                buffer.getvalue()
+            ).decode(),
+        }
