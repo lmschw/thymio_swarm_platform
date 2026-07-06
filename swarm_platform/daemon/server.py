@@ -96,14 +96,37 @@ class SwarmDaemon:
             print("[DAEMON] logger created ->", self.logger, flush=True)
             return await self._start_experiment(msg)
 
-        if t == "update_code":
-            self.running_experiment = False
-            self.experiment_task.cancel()
-            subprocess.run(["git", "pull"], check=True)
-            uv = os.environ["UV_BIN"]
-            subprocess.run([uv, "sync"], check=True)
-            os._exit(0)
+        # if t == "update_code":
+        #     self.running_experiment = False
+        #     self.experiment_task.cancel()
+        #     subprocess.run(["git", "pull"], check=True)
+        #     uv = os.environ["UV_BIN"]
+        #     subprocess.run([uv, "sync"], check=True)
+        #     os._exit(0)
 
+        if t == "update_code":
+            print("=== UPDATE START ===", flush=True)
+
+            try:
+                print("1. git pull", flush=True)
+                subprocess.run(["git", "pull"], check=True)
+
+                uv = os.environ["UV_BIN"]
+                print(f"2. uv = {uv}", flush=True)
+
+                subprocess.run([uv, "--version"], check=True)
+                print("3. uv works", flush=True)
+
+                subprocess.run([uv, "sync"], check=True)
+                print("4. uv sync finished", flush=True)
+
+                print("5. exiting", flush=True)
+                os._exit(0)
+
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                raise
         if t == "activate_project":
             path = msg["path"]
             print(f"[PROJECT] Activating: {path}", flush=True)
