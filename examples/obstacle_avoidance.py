@@ -5,7 +5,6 @@ from swarm_platform.controller.utils.utils import normalize_robots
 
 COORDINATOR_IP = "10.15.2.63"
 
-
 async def main():
     client = SwarmClient(COORDINATOR_IP)
 
@@ -41,7 +40,9 @@ async def main():
             break
 
     await session.collect_logs()
-    await session.delete_logs()
+
+    # await session.collect_logs(delete_remote=False)
+    # await session.delete_logs()
 
 
 if __name__ == "__main__":

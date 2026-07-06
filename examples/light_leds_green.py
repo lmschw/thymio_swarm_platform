@@ -39,6 +39,10 @@ async def main():
             await session.stop()
             break
 
+    await session.collect_logs()
+
+    # await session.collect_logs(delete_remote=False)
+    # await session.delete_logs()
 
 if __name__ == "__main__":
     asyncio.run(main())
