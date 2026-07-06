@@ -32,28 +32,34 @@ class ProjectManager:
         return destination
 
     def update(self, project: str):
-        path = self.projects_dir / project
-        print("Updating from", Path.cwd(), flush=True)
+        project_path = self.projects_dir / project
 
-        subprocess.run(["pwd"])
-        subprocess.run(["git", "remote", "-v"])
-        subprocess.run(["git", "rev-parse", "--show-toplevel"])
-        
-        ROOT = Path(__file__).resolve().parents[2]
+        print(f"[PROJECT UPDATE] {project}")
+        print(f"[PATH] {project_path}", flush=True)
 
+        if not project_path.exists():
+            raise FileNotFoundError(f"Project not found: {project_path}")
+
+        # sanity debug (optional)
+        subprocess.run(["git", "-C", str(project_path), "remote", "-v"], check=False)
+        subprocess.run(["git", "-C", str(project_path), "rev-parse", "--show-toplevel"], check=False)
+
+        # pull latest changes for THIS project repo
         subprocess.run(
-            ["git", "-C", str(ROOT), "pull"],
+            ["git", "-C", str(project_path), "pull"],
             check=True,
         )
 
+        # sync dependencies for THIS project
         subprocess.run(
-            [str(Path.home()/".local/bin/uv"), "sync"],
-            cwd=ROOT,
+            [str(Path.home() / ".local/bin/uv"), "sync"],
+            cwd=project_path,
             check=True,
         )
 
     def activate(self, project: str):
         print(f"Activating project: {project}")
+        self.update(project)
         print(f"Projects directory: {self.projects_dir}")
         path = self.projects_dir / project
         print(f"Loading project from: {path}")

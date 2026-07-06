@@ -13,6 +13,9 @@ async def main():
     print("Installing...")
     await project.install()
 
+    print("Updating...")
+    await project.update()
+
     print("Activating...")
     await project.activate()
 
