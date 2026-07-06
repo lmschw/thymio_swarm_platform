@@ -292,17 +292,16 @@ class SwarmDaemon:
 
             msg = decode(data.decode())
 
-            # try:
-            #     response = await self.handle(msg)
-            # except Exception:
-            #     import traceback
-            #     traceback.print_exc()
+            try:
+                response = await self.handle(msg)
+            except Exception:
+                import traceback
+                traceback.print_exc()
 
-            response = await self.handle(msg)
-                # response = {
-                #     "type": "error",
-                #     "error": "internal_error",
-                # }
+                response = {
+                    "type": "error",
+                    "error": "internal_error",
+                }
 
             writer.write((encode(response) + "\n").encode())
             await writer.drain()

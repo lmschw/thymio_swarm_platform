@@ -20,7 +20,7 @@ class Project:
             "repository": self.repository,
         })
         self.client._check_results("Project installation", responses)
-        print("before activate")
+        await self.update()
         await self.activate()
 
     async def update(self):

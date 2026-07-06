@@ -25,6 +25,8 @@ class ProjectLoader:
         with manifest.open() as f:
             data = yaml.safe_load(f)
 
+        print(data)
+
         if str(directory) not in sys.path:
             sys.path.insert(0, str(directory))
 

@@ -16,6 +16,7 @@ async def main():
     print("Activating...")
     await project.activate()
 
+    print("Activating session...")
     session = project.session("test-run")
 
     print("Starting...")
