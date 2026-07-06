@@ -134,6 +134,7 @@ class SwarmDaemon:
             return {"type": "project_activated"}
 
         if t == "collect_logs":
+            print(f"collect_logs {msg}", flush=True)
             return await self.collect_logs(
                 msg["session_id"],
                 delete=msg.get("delete", False),
@@ -340,10 +341,12 @@ class SwarmDaemon:
 
 
     async def collect_logs(self, session_id, delete=False):
-
         log_dir = Path("logs") / session_id
 
+        print(f"[COLLECT LOGS] session_id={session_id} log_dir={log_dir} delete={delete}")
+
         if not log_dir.exists():
+            print(f"[COLLECT LOGS] log_dir does not exist: {log_dir}")
             return {
                 "type": "logs",
                 "content": None,
@@ -352,7 +355,6 @@ class SwarmDaemon:
         buffer = io.BytesIO()
 
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
-
             for file in log_dir.rglob("*"):
                 if file.is_file():
                     z.write(file, file.relative_to(log_dir))

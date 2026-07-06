@@ -76,11 +76,11 @@ class SwarmClient:
         return SwarmSession(self, name=name)
 
     async def collect_logs(self, session_id, output_dir, delete_remote=False):
-
         robots = await self.list_robots()
-
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"[COLLECT LOGS] session_id={session_id} output_dir={output_dir} delete_remote={delete_remote}")
 
         for robot_id, robot in robots.items():
 
@@ -94,6 +94,7 @@ class SwarmClient:
             )
 
             if response["content"] is None:
+                print(f"[{robot_id}] No logs found for session {session_id}")
                 continue
 
             data = base64.b64decode(response["content"])
