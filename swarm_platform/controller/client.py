@@ -112,22 +112,15 @@ class SwarmClient:
             }
         )
 
-    def _check_results(self, action: str, responses: dict):
-
-        failures = {
-            robot: response.get("error", "unknown_error")
-            for robot, response in responses.items()
-            if response.get("type") == "error"
-        }
-
-        if not failures:
-            return
-
-        lines = "\n".join(
-            f"  {robot}: {error}"
-            for robot, error in failures.items()
-        )
-
-        raise RuntimeError(
-            f"{action} failed:\n{lines}"
-        )
+    def _check_results(self, action, responses):
+        failures = []
+        print(responses)
+        for robot_id, response in responses.items():
+            if response.get("type") == "error":
+                failures.append(
+                    f"{robot_id}: {response.get('error')}"
+                )
+        if failures:
+            raise RuntimeError(
+                f"{action} failed:\n  " + "\n  ".join(failures)
+            )

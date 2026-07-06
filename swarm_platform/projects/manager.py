@@ -39,8 +39,11 @@ class ProjectManager:
         )
 
     def activate(self, project: str):
+        print(f"Activating project: {project}")
         path = self.projects_dir / project
+        print(f"Loading project from: {path}")
         self.project = self.loader.load(path)
+        print(f"Activated project: {self.project.name} (version {self.project.version})")
         return self.project
 
     def current(self):
