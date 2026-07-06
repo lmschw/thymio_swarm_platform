@@ -21,7 +21,7 @@ class SwarmDaemon:
         print("cwd =", Path.cwd(), flush=True)
         print("__file__ =", __file__, flush=True)
         print("git root =", Path(__file__).resolve().parents[2], flush=True)
-        
+
         self.coordinator_ip = os.getenv("SWARM_COORDINATOR", "10.15.2.63")
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 
@@ -144,6 +144,22 @@ class SwarmDaemon:
                     "type": "error",
                     "error": str(e),
                 }
+            
+        if t == "update_code":
+            try:
+                self.running_experiment = False
+                if self.experiment_task:
+                    self.experiment_task.cancel()
+                
+                subprocess.run(["git", "pull"], check=True)
+                uv = os.environ["UV_BIN"]
+                subprocess.run([uv, "sync"], check=True)
+                print("Update successful", flush=True)
+                os._exit(0)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                raise
             
         if t == "collect_logs":
             try:
