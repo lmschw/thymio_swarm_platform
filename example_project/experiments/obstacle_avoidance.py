@@ -19,7 +19,7 @@ class ObstacleAvoidance:
 
     async def run(self):
         print("OBSTACLE AVOIDANCE STARTED", flush=True)
-        
+
         try:
             while self.running:
 
@@ -79,10 +79,13 @@ class ObstacleAvoidance:
                 self.logger.close()
 
     async def pause(self):
+        print("Pausing...")
         self.paused = True
 
     async def resume(self):
+        print("Resuming...")
         self.paused = False
 
     async def stop(self):
+        print("Stopping...")
         self.running = False

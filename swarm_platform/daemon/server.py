@@ -96,34 +96,22 @@ class SwarmDaemon:
             print("[DAEMON] logger created ->", self.logger, flush=True)
             return await self._start_experiment(msg)
 
-        # if t == "update_code":
-        #     self.running_experiment = False
-        #     self.experiment_task.cancel()
-        #     subprocess.run(["git", "pull"], check=True)
-        #     uv = os.environ["UV_BIN"]
-        #     subprocess.run([uv, "sync"], check=True)
-        #     os._exit(0)
-
         if t == "update_code":
-            print("=== UPDATE START ===", flush=True)
-
             try:
-                print("1. git pull", flush=True)
+                self.running_experiment = False
+                if self.experiment_task:
+                    self.experiment_task.cancel()
+                
                 subprocess.run(["git", "pull"], check=True)
-
                 uv = os.environ["UV_BIN"]
-                print(f"2. uv = {uv}", flush=True)
-
                 subprocess.run([uv, "sync"], check=True)
-                print("3. uv sync finished", flush=True)
-
-                print("4. exiting", flush=True)
+                print("Update successful", flush=True)
                 os._exit(0)
-
             except Exception:
                 import traceback
                 traceback.print_exc()
                 raise
+
         if t == "activate_project":
             path = msg["path"]
             print(f"[PROJECT] Activating: {path}", flush=True)
@@ -139,14 +127,12 @@ class SwarmDaemon:
             return {"type": "project_activated"}
 
         if t == "collect_logs":
-            print(f"collect_logs", flush=True)
             return await self.collect_logs(
                 msg["session_id"],
                 delete=msg.get("delete", False),
             )
         
         if t == "delete_log":
-            print("delete_log", flush=True)
             self.log_manager.delete(
                 msg["session_id"]
             )
@@ -165,39 +151,24 @@ class SwarmDaemon:
     async def _run_experiment(self):
         try:
             print(">>> EXPERIMENT TASK STARTED <<<", flush=True)
-            await asyncio.sleep(2)
-            print(">>> EXPERIMENT STILL RUNNING <<<", flush=True)
             await self.experiment.run()
-
-            print(">>> EXPERIMENT FINISHED <<<")
-
         except Exception as e:
             print(f">>> EXPERIMENT CRASHED: {repr(e)}")
 
         finally:
             self.running_experiment = False
-
             if self.logger is not None:
                 self.logger.close()
                 self.logger = None
 
     async def _start_experiment(self, msg):
-        print("1")
-
         if self.running_experiment:
             print("already running")
             return {"type": "error", "error": "Experiment already running"}
 
-        print("2")
-
         name = msg["name"]
         config = msg.get("config", {})
-
-        print("3")
-
         experiment_cls = self.project_manager.experiment(name)
-
-        print("4", experiment_cls)
 
         self.experiment = experiment_cls(
             robot=self.robot,
@@ -205,18 +176,10 @@ class SwarmDaemon:
             logger=self.logger,
         )
 
-        print("5", self.experiment)
-
         self.running_experiment = True
-
-        print("6")
-
         self.experiment_task = asyncio.create_task(
             self._run_experiment()
         )
-
-        print("7", self.experiment_task)
-
         return {"type": "started"}
 
     # ---------------------------

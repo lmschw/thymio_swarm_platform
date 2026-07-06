@@ -100,8 +100,6 @@ class SwarmClient:
                 },
             )
 
-            print(f"[{robot_id}] Response: {response}")
-
             if response["content"] is None:
                 print(f"[{robot_id}] No logs found for session {session_id}")
                 continue
