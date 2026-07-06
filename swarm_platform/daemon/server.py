@@ -41,11 +41,9 @@ class SwarmDaemon:
         t = msg.get("type")
         print(f"[DAEMON] handling message: {t}", flush=True)
 
-        print("before ping")
         if t == "ping":
             return {"type": "pong"}
 
-        print("before status")
         if t == "status":
             return {
                 "type": "status",
@@ -56,19 +54,16 @@ class SwarmDaemon:
             session_id = msg.get("session_id")
             print(f"[SESSION {session_id}] {t}")
         
-        print("before pause")
         if t == "pause":
             if self.experiment:
                 await self.experiment.pause()
             return {"type": "paused"}
 
-        print("before resume")
         if t == "resume":
             if self.experiment:
                 await self.experiment.resume()
             return {"type": "resumed"}
 
-        print("before stop")
         if t == "stop":
             self.running_experiment = False
 
@@ -89,7 +84,6 @@ class SwarmDaemon:
 
             return {"type": "stopped"}
 
-        print("before start_experiment")
         if t == "start_experiment":
             session_id = msg.get("session_id")
             print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
@@ -102,7 +96,6 @@ class SwarmDaemon:
             print("[DAEMON] logger created ->", self.logger, flush=True)
             return await self._start_experiment(msg)
 
-        print("before update_code")
         if t == "update_code":
             subprocess.run(["git", "pull"], check=True)
             subprocess.run(["uv", "sync"], check=True)
@@ -110,7 +103,6 @@ class SwarmDaemon:
             # tell systemd to restart safely
             return {"type": "updated_restart_required"}
         
-        print("before update_restart_required")
         if t == "updated_restart_required":
             self.running_experiment = False
             self.experiment_task.cancel()
@@ -118,7 +110,6 @@ class SwarmDaemon:
             # exit process cleanly
             os._exit(0)
 
-        print("before activate_project")
         if t == "activate_project":
             path = msg["path"]
             print(f"[PROJECT] Activating: {path}", flush=True)
@@ -134,13 +125,14 @@ class SwarmDaemon:
             return {"type": "project_activated"}
 
         if t == "collect_logs":
-            print(f"collect_logs {msg}", flush=True)
+            print(f"collect_logs", flush=True)
             return await self.collect_logs(
                 msg["session_id"],
                 delete=msg.get("delete", False),
             )
         
         if t == "delete_log":
+            print("delete_log", flush=True)
             self.log_manager.delete(
                 msg["session_id"]
             )
@@ -149,6 +141,7 @@ class SwarmDaemon:
                 "type": "deleted",
             }
 
+        print(f"[DAEMON] unknown message type: {t}", flush=True)
         return {"type": "error", "error": "unknown_command"}
 
     # ---------------------------
