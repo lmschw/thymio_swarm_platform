@@ -1,10 +1,11 @@
 import asyncio
-import json
-from pathlib import Path
 import base64
-import zipfile
 import io
+import json
+import zipfile
+from pathlib import Path
 
+from swarm_platform.controller.project import Project
 from swarm_platform.controller.session import SwarmSession
 
 
@@ -14,8 +15,10 @@ class SwarmClient:
         self.coordinator_ip = coordinator_ip
         self.coordinator_port = coordinator_port
 
-    async def list_robots(self):
+    def project(self, repository: str):
+        return Project(self, repository)
 
+    async def list_robots(self):
         reader, writer = await asyncio.open_connection(
             self.coordinator_ip,
             self.coordinator_port,
@@ -32,7 +35,6 @@ class SwarmClient:
         return response["robots"]
 
     async def send(self, robot, message):
-
         reader, writer = await asyncio.open_connection(
             robot["ip"],
             robot["port"],
@@ -43,54 +45,40 @@ class SwarmClient:
 
         data = await reader.readline()
 
-        if data:
-            response = json.loads(data.decode())
-        else:
-            response = {
-                "type": "connection_closed"
-            }
-        
         writer.close()
         await writer.wait_closed()
 
-        return response
+        if not data:
+            return {
+                "type": "connection_closed"
+            }
+
+        return json.loads(data.decode())
 
     async def broadcast(self, message):
-
         robots = await self.list_robots()
 
-        await asyncio.gather(
+        responses = await asyncio.gather(
             *(
                 self.send(robot, message)
                 for robot in robots.values()
             )
         )
 
-    async def activate_project(self, path: str):
-        await self.broadcast({
-            "type": "activate_project",
-            "path": path
-        })
-
-    async def start_experiment(self, name: str, config: dict):
-        await self.broadcast({
-            "type": "start_experiment",
-            "name": name,
-            "config": config
-        })
-
-    def session(self, name=None):
-        return SwarmSession(self, name=name)
+        return {
+            robot_id: response
+            for (robot_id, _), response in zip(
+                robots.items(),
+                responses,
+            )
+        }
 
     async def collect_logs(self, session_id, output_dir, delete_remote=False):
         robots = await self.list_robots()
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"[COLLECT LOGS] session_id={session_id} output_dir={output_dir} delete_remote={delete_remote}")
-
         for robot_id, robot in robots.items():
-
             response = await self.send(
                 robot,
                 {
@@ -100,26 +88,26 @@ class SwarmClient:
                 },
             )
 
-            if response["content"] is None:
-                print(f"[{robot_id}] No logs found for session {session_id}")
+            if response.get("type") == "error":
+                print(f"[{robot_id}] {response['error']}")
                 continue
 
-            data = base64.b64decode(response["content"])
+            content = response.get("content")
 
-            with zipfile.ZipFile(io.BytesIO(data)) as z:
-                z.extractall(output_dir / robot_id)
-    
+            if content is None:
+                print(f"[{robot_id}] No logs.")
+                continue
+
+            data = base64.b64decode(content)
+            destination = output_dir / robot_id
+            destination.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                archive.extractall(destination)
+
     async def delete_logs(self, session_id):
-        robots = await self.list_robots()
-        await asyncio.gather(
-            *(
-                self.send(
-                    robot,
-                    {
-                        "type": "delete_log",
-                        "session_id": session_id,
-                    },
-                )
-                for robot in robots.values()
-            )
+        return await self.broadcast(
+            {
+                "type": "delete_logs",
+                "session_id": session_id,
+            }
         )

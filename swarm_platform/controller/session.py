@@ -3,20 +3,49 @@ from pathlib import Path
 
 class SwarmSession:
 
-    def __init__(self, client, name=None):
-        self.client = client
-        self.session_id = name or f"session-{uuid.uuid4().hex[:8]}"
 
-    async def activate_project(self, path: str):
-        await self.client.activate_project(path)
+    def __init__(self, client, project, name=None):
+        self.client = client
+        self.project = project
+
+        self.session_id = (
+            name
+            or f"session-{uuid.uuid4().hex[:8]}"
+        )
 
     async def start(self, experiment, config=None):
-        await self.client.broadcast({
+        response = await self.project.activate()
+
+        failed = [
+            robot
+            for robot, result in response.items()
+            if result.get("type") == "error"
+        ]
+
+        if failed:
+            raise RuntimeError(
+                "Failed to activate project "
+                f"'{self.project.name}' on: {', '.join(failed)}"
+            )
+
+        response = await self.client.broadcast({
             "type": "start_experiment",
             "session_id": self.session_id,
             "name": experiment,
             "config": config or {},
         })
+
+        failed = [
+            robot
+            for robot, result in response.items()
+            if result.get("type") == "error"
+        ]
+
+        if failed:
+            raise RuntimeError(
+                "Failed to start experiment "
+                f"'{experiment}' on: {', '.join(failed)}"
+            )
 
     async def pause(self):
         await self.client.broadcast({

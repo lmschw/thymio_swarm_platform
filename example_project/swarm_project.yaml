@@ -1,8 +1,12 @@
 name: Example Project
-
 version: 1.0
 
 experiments:
-  - experiments.obstacle_avoidance.ObstacleAvoidance
-  - experiments.light_leds_green.LightLEDsGreen
-  - experiments.light_leds_red.LightLEDsRed
+  obstacle_avoidance:
+    class: experiments.obstacle_avoidance.ObstacleAvoidance
+
+  lights_red:
+    class: experiments.light_leds_red.LightLEDsRed
+
+  lights_green:
+    class: experiments.light_leds_green.LightLEDsGreen

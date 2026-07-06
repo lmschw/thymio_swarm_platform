@@ -1,23 +1,52 @@
 from pathlib import Path
+import subprocess
 
 from .loader import ProjectLoader
-from .exceptions import ExperimentNotFound
 
 
 class ProjectManager:
-    def __init__(self, path: str):
-        self.project = None
-        self.activate(path)
 
-    def activate(self, path: str):
-        self.project = ProjectLoader().load(path)
+    def __init__(self, projects_dir: Path):
+        self.projects_dir = Path(projects_dir)
+        self.projects_dir.mkdir(parents=True, exist_ok=True)
+
+        self.loader = ProjectLoader()
+        self.project = None
+
+    def clone(self, repository: str):
+        name = repository.rstrip("/").split("/")[-1]
+        if name.endswith(".git"):
+            name = name[:-4]
+        destination = self.projects_dir / name
+        if destination.exists():
+            return destination
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                repository,
+                str(destination),
+            ],
+            check=True,
+        )
+        return destination
+
+    def update(self, project: str):
+        path = self.projects_dir / project
+        subprocess.run(
+            ["git", "-C", str(path), "pull"],
+            check=True,
+        )
+
+    def activate(self, project: str):
+        path = self.projects_dir / project
+        self.project = self.loader.load(path)
+        return self.project
+
+    def current(self):
+        return self.project
 
     def experiment(self, name: str):
-        return self.project.experiments[name]
-
-    def list_experiments(self):
-        return list(self.project.experiments.keys())
-
-    def reload(self):
-        if self.project:
-            self.activate(self.project.path)
+        if self.project is None:
+            raise RuntimeError("No active project.")
+        return self.project.experiment(name)

@@ -30,20 +30,13 @@ class ProjectLoader:
 
         experiments = {}
 
-        for class_path in data["experiments"]:
-
-            module_name, class_name = class_path.rsplit(".", 1)
+        for experiment_name, info in data["experiments"].items():
+            module_name, class_name = info["class"].rsplit(".", 1)
 
             module = importlib.import_module(module_name)
-
             experiment_cls = getattr(module, class_name)
 
-            if not hasattr(experiment_cls, "name"):
-                raise ProjectLoadError(
-                    f"{class_name} has no 'name' attribute."
-                )
-
-            experiments[experiment_cls.name] = experiment_cls
+            experiments[experiment_name] = experiment_cls
 
         return Project(
             name=data["name"],
