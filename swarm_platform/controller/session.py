@@ -14,38 +14,20 @@ class SwarmSession:
         )
 
     async def start(self, experiment, config=None):
-        response = await self.project.activate()
 
-        failed = [
-            robot
-            for robot, result in response.items()
-            if result.get("type") == "error"
-        ]
+        await self.project.activate()
 
-        if failed:
-            raise RuntimeError(
-                "Failed to activate project "
-                f"'{self.project.name}' on: {', '.join(failed)}"
-            )
-
-        response = await self.client.broadcast({
+        responses = await self.client.broadcast({
             "type": "start_experiment",
             "session_id": self.session_id,
             "name": experiment,
             "config": config or {},
         })
 
-        failed = [
-            robot
-            for robot, result in response.items()
-            if result.get("type") == "error"
-        ]
-
-        if failed:
-            raise RuntimeError(
-                "Failed to start experiment "
-                f"'{experiment}' on: {', '.join(failed)}"
-            )
+        self.client._check_results(
+            f"Starting experiment '{experiment}'",
+            responses,
+        )
 
     async def pause(self):
         await self.client.broadcast({

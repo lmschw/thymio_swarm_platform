@@ -33,10 +33,6 @@ class SwarmDaemon:
         self.log_manager = LogManager()
         self.logger = None
 
-    # ---------------------------
-    # MESSAGE HANDLING
-    # ---------------------------
-
     async def handle(self, msg: dict):
         t = msg.get("type")
         print(f"[DAEMON] handling message: {t}", flush=True)
@@ -85,61 +81,88 @@ class SwarmDaemon:
             return {"type": "stopped"}
 
         if t == "start_experiment":
-            session_id = msg.get("session_id")
-            print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
-            path = self.log_manager.robot_log(
-                msg["session_id"],
-                socket.gethostname(),
-            )
-
-            self.logger = SessionLogger(path)
-            print("[DAEMON] logger created ->", self.logger, flush=True)
-            return await self._start_experiment(msg)
-
-        if t == "update_code":
             try:
-                self.running_experiment = False
-                if self.experiment_task:
-                    self.experiment_task.cancel()
-                
-                subprocess.run(["git", "pull"], check=True)
-                uv = os.environ["UV_BIN"]
-                subprocess.run([uv, "sync"], check=True)
-                print("Update successful", flush=True)
-                os._exit(0)
-            except Exception:
-                import traceback
-                traceback.print_exc()
-                raise
+                session_id = msg["session_id"]
+                print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
+                path = self.log_manager.robot_log(
+                    session_id,
+                    socket.gethostname(),
+                )
+                self.logger = SessionLogger(path)
+                return await self._start_experiment(msg)
+            except Exception as e:
+                return {
+                    "type": "error",
+                    "error": str(e),
+                }
+
+        if t == "clone_project":
+            try:
+                repository = msg["repository"]
+                self.project_manager.clone(repository)
+                return {
+                    "type": "project_cloned",
+                }
+            except Exception as e:
+                return {
+                    "type": "error",
+                    "error": str(e),
+                }
+        
+        if t == "update_project":
+            try:
+                project = msg["project"]
+                self.project_manager.update(project)
+                return {
+                    "type": "project_updated",
+                }
+            except Exception as e:
+                return {
+                    "type": "error",
+                    "error": str(e),
+                }
 
         if t == "activate_project":
-            path = msg["path"]
-            print(f"[PROJECT] Activating: {path}", flush=True)
-            self.project_manager.activate(path)
-
-            # stop running experiment on switch
-            self.running_experiment = False
-
-            if self.experiment:
-                await self.robot.stop()
-                await self.robot.top_led(0, 0, 0)
-
-            return {"type": "project_activated"}
-
+            try:
+                project = msg["project"]
+                print(f"[PROJECT] Activating: {project}", flush=True)
+                self.project_manager.activate(project)
+                self.running_experiment = False
+                if self.experiment:
+                    await self.robot.stop()
+                    await self.robot.top_led(0, 0, 0)
+                return {
+                    "type": "project_activated",
+                }
+            except Exception as e:
+                return {
+                    "type": "error",
+                    "error": str(e),
+                }
+            
         if t == "collect_logs":
-            return await self.collect_logs(
-                msg["session_id"],
-                delete=msg.get("delete", False),
-            )
+            try:
+                return await self.collect_logs(
+                    msg["session_id"],
+                    delete=msg.get("delete", False),
+                )
+            except Exception as e:
+                return {
+                    "type": "error",
+                    "error": str(e),
+                }
         
         if t == "delete_log":
-            self.log_manager.delete(
-                msg["session_id"]
-            )
-
-            return {
-                "type": "deleted",
-            }
+            try:
+                self.log_manager.delete(msg["session_id"])
+                return {
+                    "type": "deleted",
+                }
+            except Exception as e:
+                return {
+                    "type": "error",
+                    "error": str(e),
+                }
 
         print(f"[DAEMON] unknown message type: {t}", flush=True)
         return {"type": "error", "error": "unknown_command"}
