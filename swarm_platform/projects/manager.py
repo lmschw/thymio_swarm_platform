@@ -40,6 +40,7 @@ class ProjectManager:
 
     def activate(self, project: str):
         print(f"Activating project: {project}")
+        print(f"Projects directory: {self.projects_dir}")
         path = self.projects_dir / project
         print(f"Loading project from: {path}")
         self.project = self.loader.load(path)
