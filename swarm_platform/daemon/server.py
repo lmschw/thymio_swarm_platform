@@ -72,6 +72,8 @@ class SwarmDaemon:
             if self.experiment:
                 print("experiment stop")
                 await self.experiment.stop()
+            else:
+                print("no experiment to stop")
 
             # if self.experiment_task:
             #     try:
@@ -79,9 +81,12 @@ class SwarmDaemon:
             #     except asyncio.CancelledError:
             #         pass
 
+            print("robot stop")
             await self.robot.stop()
+            print("robot top led off")  
             await self.robot.top_led(0, 0, 0)
 
+            print("setting experiment and task to None")
             self.experiment = None
             self.experiment_task = None
 
