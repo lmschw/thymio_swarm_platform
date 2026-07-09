@@ -114,7 +114,6 @@ class SwarmClient:
 
     def _check_results(self, action, responses):
         failures = []
-        print(responses)
         for robot_id, response in responses.items():
             if response.get("type") == "error":
                 failures.append(

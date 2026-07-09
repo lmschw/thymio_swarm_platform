@@ -10,31 +10,46 @@ async def main():
         "https://github.com/lmschw/thymio_raspberry_swarm_control"
     )
 
-    print("Installing...")
+    #print("Installing...")
     await project.install()
 
-    print("Updating...")
+    #print("Updating...")
     await project.update()
 
-    print("Activating...")
+    #print("Activating...")
     await project.activate()
 
-    print("Activating session...")
+    #print("Activating session...")
     session = project.session("test-run")
 
-    print("Starting...")
-    await session.start("sway")
+    #print("Starting...")
+    await session.start("blink")
 
-    await asyncio.sleep(10)
+    while True:
 
-    print("Stopping...")
+        cmd = input("\n[p]ause  [r]esume  [s]top > ").strip().lower()
+
+        if cmd == "p":
+            print("Pausing...")
+            await session.pause()
+
+        elif cmd == "r":
+            print("Resuming...")
+            await session.resume()
+
+        elif cmd == "s":
+            print("Stopping...")
+            await session.stop()
+            break
+
+    #print("Stopping...")
     await session.stop()
 
-    print("Collecting logs...")
-    await session.collect_logs()
+    # print("Collecting logs...")
+    # await session.collect_logs()
 
-    print("Deleting logs...")
-    await session.delete_logs()
+    # print("Deleting logs...")
+    # await session.delete_logs()
 
     print("Done.")
 

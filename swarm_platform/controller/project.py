@@ -37,7 +37,6 @@ class Project:
             "type": "activate_project",
             "project": self.name,
         })
-        print(responses)
         self.client._check_results("Project activation", responses)
         return responses
 
