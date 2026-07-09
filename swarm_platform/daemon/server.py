@@ -9,9 +9,11 @@ import io
 import zipfile
 import shutil
 from typing import Any, Dict, Optional
+from dataclasses import asdict
 
 from swarm_platform.config import COORDINATOR_IP, COORDINATOR_PORT
 from swarm_platform.protocol.codec import encode, decode
+from swarm_platform.protocol.command import RobotCommand
 from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
 from swarm_platform.daemon.logger import SessionLogger
@@ -106,11 +108,22 @@ class SwarmDaemon:
                 "camera": self.robot.has_camera,
                 "led_ring": self.robot.has_led_ring,
             }
-        
+
+        if t == 'telemetry':
+            state : RobotState = await self.robot.state()
+            return asdict(state)
+
+        # direct remote control, for devs
+        if t == 'robot_command':
+            cmd_dict: dict = msg.get("command")
+            cmd = RobotCommand(**cmd_dict)
+            await self.robot.apply(cmd)
+            return {"type": "ack"}
+
         if t in ["pause", "resume", "stop"]:
             session_id = msg.get("session_id")
             print(f"[SESSION {session_id}] {t}")
-        
+
         if t == "pause":
             if self.experiment:
                 await self.experiment.pause()
@@ -179,7 +192,7 @@ class SwarmDaemon:
             return {
                 "type": "project_cloned"
             }
-        
+
         if t == "update_project":
             self.project_manager.update()
             self._restart_requested = True
@@ -192,7 +205,7 @@ class SwarmDaemon:
             return {
                 "type": "project_activated"
             }
-            
+
         if t == "update_code":
             subprocess.run("git restore .", shell=True, check=True) # remove all local changes
             subprocess.run('sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -d' ' -f5-8)Z"', shell=True, check=True)
@@ -202,7 +215,7 @@ class SwarmDaemon:
             return {
                 "type": "code_updated"
             }
-        
+
         if t == "delete_logs":
             try:
                 self.log_manager.delete(msg["session_id"])
@@ -224,7 +237,7 @@ class SwarmDaemon:
             return {
                 "type": "identified"
             }
-        
+
         if t == "tracking_update":
 
             self.robot.global_poses = {
@@ -704,3 +717,4 @@ class SwarmDaemon:
         )
 
         await writer.drain()
+

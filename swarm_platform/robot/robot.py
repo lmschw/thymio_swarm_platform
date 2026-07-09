@@ -321,7 +321,7 @@ class Robot:
         """
         return RobotState(
             proximity=await self.proximity_horizontal(),
-            ground=await self.proximity_ground_delta(),
+            ground=await self.proximity_ground_reflected(),
             accelerometer=await self.accelerometer(),
             buttons=await self.buttons(),
             temperature=await self.temperature(),
@@ -595,3 +595,4 @@ class Robot:
         Normalize an angle to [-pi, pi].
         """
         return (angle + math.pi) % (2.0 * math.pi) - math.pi
+
