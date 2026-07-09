@@ -66,6 +66,8 @@ class ProjectLoader:
                     module_name
                 )
 
+            module = importlib.reload(module)
+
             experiment_cls = getattr(
                 module,
                 class_name
