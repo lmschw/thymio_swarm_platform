@@ -14,31 +14,34 @@ class Project:
         self.name = name
 
     async def install(self):
-        print(f"Installing '{self.name}'")
         responses = await self.client.broadcast({
             "type": "clone_project",
             "repository": self.repository,
         })
-        self.client._check_results("Project installation", responses)
-        await self.update()
+        self.client._check_results(
+            "Project installation",
+            responses,
+        )
         await self.activate()
 
     async def update(self):
-        print(f"Updating '{self.name}'")
         responses = await self.client.broadcast({
             "type": "update_project",
-            "project": self.name,
         })
-        self.client._check_results("Project update", responses)
+        self.client._check_results(
+            "Project update",
+            responses,
+        )
         await self.activate()
 
     async def activate(self):
         responses = await self.client.broadcast({
             "type": "activate_project",
-            "project": self.name,
         })
-        self.client._check_results("Project activation", responses)
-        return responses
+        self.client._check_results(
+            "Project activation",
+            responses,
+        )
 
     def session(self, name=None):
         return SwarmSession(

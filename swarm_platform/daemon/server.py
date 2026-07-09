@@ -26,7 +26,7 @@ class SwarmDaemon:
         self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
 
         self.project_manager = ProjectManager(
-            Path("example_project")
+            Path("active_project")
         )
 
         self.robot = Robot()
@@ -109,48 +109,28 @@ class SwarmDaemon:
                 }
 
         if t == "clone_project":
-            try:
-                repository = msg["repository"]
-                self.project_manager.clone(repository)
-                return {
-                    "type": "project_cloned",
-                }
-            except Exception as e:
-                return {
-                    "type": "error",
-                    "error": str(e),
-                }
+            self.project_manager.clone(
+                msg["repository"]
+            )
+            return {
+                "type": "project_cloned"
+            }
         
         if t == "update_project":
-            try:
-                project = msg["project"]
-                self.project_manager.update(project)
-                return {
-                    "type": "project_updated",
-                }
-            except Exception as e:
-                return {
-                    "type": "error",
-                    "error": str(e),
-                }
+
+            self.project_manager.update()
+
+            return {
+                "type": "project_updated"
+            }
 
         if t == "activate_project":
-            try:
-                project = msg["project"]
-                print(f"[PROJECT] Activating: {project}", flush=True)
-                self.project_manager.activate(project)
-                self.running_experiment = False
-                if self.experiment:
-                    await self.robot.stop()
-                    await self.robot.top_led(0, 0, 0)
-                return {
-                    "type": "project_activated",
-                }
-            except Exception as e:
-                return {
-                    "type": "error",
-                    "error": str(e),
-                }
+
+            self.project_manager.activate()
+
+            return {
+                "type": "project_activated"
+            }
             
         if t == "update_code":
             try:
