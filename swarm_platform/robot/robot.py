@@ -94,7 +94,7 @@ class Robot:
             await robot.system_sound(1)
         """
         await self.connection.node.send_events({
-            "_system_sound": [int(sound)]
+            "sound.system": [int(sound)]
         })
 
     async def freq_sound(self, frequency: int, duration: int):
@@ -105,16 +105,14 @@ class Robot:
         duration: 1/60 s units
         """
         await self.connection.node.send_events({
-            "_sound.freq": [
+            "sound.freq": [
                 int(frequency),
                 int(duration),
             ]
         })
 
     async def sound_stop(self):
-        await self.connection.node.send_events({
-            "_sound.stop": []
-        })
+        self.system_sound(-1)
     
     async def state(self):
         return RobotState(
