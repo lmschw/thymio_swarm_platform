@@ -32,6 +32,9 @@ class Project:
             "Project update",
             responses,
         )
+        await self.client.broadcast({
+            "type": "update_code",
+        })
         await self.activate()
 
     async def activate(self):
@@ -42,6 +45,9 @@ class Project:
             "Project activation",
             responses,
         )
+        await self.client.broadcast({
+            "type": "update_code",
+        })
 
     def session(self, name=None):
         return SwarmSession(
