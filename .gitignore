@@ -2,3 +2,4 @@
 *.pyd
 *.egg-info
 *.csv
+*.zip
