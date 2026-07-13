@@ -118,33 +118,24 @@ class SwarmDaemon:
         
         if t == "update_project":
             self.project_manager.update()
-
+            asyncio.create_task(self.restart_daemon())
             return {
                 "type": "project_updated"
             }
 
         if t == "activate_project":
             self.project_manager.activate()
-
             return {
                 "type": "project_activated"
             }
             
         if t == "update_code":
-            try:
-                self.running_experiment = False
-                if self.experiment_task:
-                    self.experiment_task.cancel()
-                
-                subprocess.run(["git", "pull"], check=True)
-                uv = os.environ["UV_BIN"]
-                subprocess.run([uv, "sync"], check=True)
-                print("Update successful", flush=True)
-                os._exit(0)
-            except Exception:
-                import traceback
-                traceback.print_exc()
-                raise
+            subprocess.run(["git", "pull"], check=True)
+            subprocess.run([os.environ["UV_BIN"], "sync"], check=True)
+            asyncio.create_task(self._restart_daemon())
+            return {
+                "type": "code_updated"
+            }
             
         if t == "collect_logs":
             try:
@@ -368,3 +359,12 @@ class SwarmDaemon:
                 buffer.getvalue()
             ).decode(),
         }
+
+    async def restart_daemon(self):
+        self.running_experiment = False
+
+        if self.experiment_task:
+            self.experiment_task.cancel()
+
+        await asyncio.sleep(0.2)
+        os._exit(0)
