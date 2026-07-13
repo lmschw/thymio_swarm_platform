@@ -86,16 +86,10 @@ class Robot:
 
     # Sounds
     async def system_sound(self, sound: int):
-        """
-        Play one of Thymio's built-in system sounds.
-
-        Examples:
-            await robot.system_sound(0)
-            await robot.system_sound(1)
-        """
-        await self.connection.node.send_events({
-            "sound.system": [int(sound)]
-        })
+        await self.connection.node.call_native_function(
+            "sound.system",
+            [int(sound)],
+        )
 
     async def freq_sound(self, frequency: int, duration: int):
         """
@@ -104,12 +98,13 @@ class Robot:
         frequency: Hz
         duration: 1/60 s units
         """
-        await self.connection.node.send_events({
-            "sound.freq": [
+        await self.connection.node.call_native_function(
+            "sound.freq",
+            [
                 int(frequency),
                 int(duration),
-            ]
-        })
+            ],
+        )
 
     async def sound_stop(self):
         await self.system_sound(-1)
