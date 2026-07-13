@@ -86,7 +86,8 @@ class Robot:
 
     # Sounds
     async def system_sound(self, sound: int):
-        await self.connection.node.nf_sound_system(int(sound))
+        #await self.connection.node.nf_sound_system(int(sound))
+        print("system.sound", sound)
 
     async def sound_stop(self):
         await self.system_sound(-1)
