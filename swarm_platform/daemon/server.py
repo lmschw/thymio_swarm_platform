@@ -118,6 +118,7 @@ class SwarmDaemon:
         
         if t == "update_project":
             self.project_manager.update()
+            self.update_code()
 
             return {
                 "type": "project_updated"
@@ -125,26 +126,14 @@ class SwarmDaemon:
 
         if t == "activate_project":
             self.project_manager.activate()
+            self.update_code()
 
             return {
                 "type": "project_activated"
             }
             
         if t == "update_code":
-            try:
-                self.running_experiment = False
-                if self.experiment_task:
-                    self.experiment_task.cancel()
-                
-                subprocess.run(["git", "pull"], check=True)
-                uv = os.environ["UV_BIN"]
-                subprocess.run([uv, "sync"], check=True)
-                print("Update successful", flush=True)
-                os._exit(0)
-            except Exception:
-                import traceback
-                traceback.print_exc()
-                raise
+            return self.update_code()
             
         if t == "collect_logs":
             try:
@@ -210,6 +199,22 @@ class SwarmDaemon:
             self._run_experiment()
         )
         return {"type": "started"}
+    
+    def update_code(self):
+        try:
+            self.running_experiment = False
+            if self.experiment_task:
+                self.experiment_task.cancel()
+            
+            subprocess.run(["git", "pull"], check=True)
+            uv = os.environ["UV_BIN"]
+            subprocess.run([uv, "sync"], check=True)
+            print("Update successful", flush=True)
+            os._exit(0)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
 
     # ---------------------------
     # NETWORK LOOP TASKS
