@@ -86,25 +86,7 @@ class Robot:
 
     # Sounds
     async def system_sound(self, sound: int):
-        await self.connection.node.call_native_function(
-            "sound.system",
-            [int(sound)],
-        )
-
-    async def freq_sound(self, frequency: int, duration: int):
-        """
-        Play a tone.
-
-        frequency: Hz
-        duration: 1/60 s units
-        """
-        await self.connection.node.call_native_function(
-            "sound.freq",
-            [
-                int(frequency),
-                int(duration),
-            ],
-        )
+        await self.connection.node.nf_sound_system(int(sound))
 
     async def sound_stop(self):
         await self.system_sound(-1)
