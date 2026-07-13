@@ -60,15 +60,12 @@ class ThymioConnection:
         self.client = ClientAsync()
         self.client.__enter__()
 
-        node = list(self.client.nodes)[0]
-
-        print(dir(node))
-
         print("Waiting for stable node...")
 
         self.node = await self._wait_for_ready_node()
 
         print("Node detected:", self.node)
+        print(dir(self.node))
 
         # ONLY NOW do we lock
         await self.node.lock()
