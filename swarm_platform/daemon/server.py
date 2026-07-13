@@ -118,7 +118,7 @@ class SwarmDaemon:
         
         if t == "update_project":
             self.project_manager.update()
-            asyncio.create_task(self.restart_daemon())
+            self._restart_requested = True
             return {
                 "type": "project_updated"
             }
@@ -132,7 +132,7 @@ class SwarmDaemon:
         if t == "update_code":
             subprocess.run(["git", "pull"], check=True)
             subprocess.run([os.environ["UV_BIN"], "sync"], check=True)
-            asyncio.create_task(self._restart_daemon())
+            self._restart_requested = True
             return {
                 "type": "code_updated"
             }
@@ -303,6 +303,9 @@ class SwarmDaemon:
             writer.write((encode(response) + "\n").encode())
             await writer.drain()
 
+            if getattr(self, "_restart_requested", False):
+                os._exit(0)
+
         writer.close()
         await writer.wait_closed()
 
@@ -359,12 +362,3 @@ class SwarmDaemon:
                 buffer.getvalue()
             ).decode(),
         }
-
-    async def restart_daemon(self):
-        self.running_experiment = False
-
-        if self.experiment_task:
-            self.experiment_task.cancel()
-
-        await asyncio.sleep(0.2)
-        os._exit(0)

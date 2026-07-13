@@ -35,25 +35,40 @@ class SwarmClient:
         return response["robots"]
 
     async def send(self, robot, message):
-        reader, writer = await asyncio.open_connection(
-            robot["ip"],
-            robot["port"],
-        )
+        last_error = None
 
-        writer.write((json.dumps(message) + "\n").encode())
-        await writer.drain()
+        for _ in range(10):
+            try:
+                reader, writer = await asyncio.open_connection(
+                    robot["ip"],
+                    robot["port"],
+                )
+                break
 
-        data = await reader.readline()
+            except OSError as e:
+                last_error = e
+                await asyncio.sleep(0.5)
 
-        writer.close()
-        await writer.wait_closed()
-
-        if not data:
+        else:
             return {
-                "type": "connection_closed"
+                "type": "error",
+                "error": str(last_error),
             }
 
-        return json.loads(data.decode())
+        try:
+            writer.write((json.dumps(message) + "\n").encode())
+            await writer.drain()
+
+            data = await reader.readline()
+
+            if not data:
+                return {"type": "connection_closed"}
+
+            return json.loads(data.decode())
+
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
     async def broadcast(self, message):
         robots = await self.list_robots()
