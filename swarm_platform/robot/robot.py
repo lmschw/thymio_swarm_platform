@@ -112,7 +112,7 @@ class Robot:
         })
 
     async def sound_stop(self):
-        self.system_sound(-1)
+        await self.system_sound(-1)
     
     async def state(self):
         return RobotState(
