@@ -118,7 +118,7 @@ class SwarmDaemon:
         
         if t == "update_project":
             self.project_manager.update()
-            self.update_code()
+            await self.update_code()
 
             return {
                 "type": "project_updated"
@@ -126,14 +126,14 @@ class SwarmDaemon:
 
         if t == "activate_project":
             self.project_manager.activate()
-            self.update_code()
+            await self.update_code()
 
             return {
                 "type": "project_activated"
             }
             
         if t == "update_code":
-            self.update_code()
+            return await self.update_code()
             
         if t == "collect_logs":
             try:
