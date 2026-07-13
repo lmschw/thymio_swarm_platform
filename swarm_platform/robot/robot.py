@@ -83,6 +83,38 @@ class Robot:
     async def temperature(self):
         await self.connection.process_messages()
         return self.connection.node["temperature"]
+
+    # Sounds
+    async def system_sound(self, sound: int):
+        """
+        Play one of Thymio's built-in system sounds.
+
+        Examples:
+            await robot.system_sound(0)
+            await robot.system_sound(1)
+        """
+        await self.connection.node.send_events({
+            "_system_sound": [int(sound)]
+        })
+
+    async def freq_sound(self, frequency: int, duration: int):
+        """
+        Play a tone.
+
+        frequency: Hz
+        duration: 1/60 s units
+        """
+        await self.connection.node.send_events({
+            "_sound.freq": [
+                int(frequency),
+                int(duration),
+            ]
+        })
+
+    async def sound_stop(self):
+        await self.connection.node.send_events({
+            "_sound.stop": []
+        })
     
     async def state(self):
         return RobotState(
