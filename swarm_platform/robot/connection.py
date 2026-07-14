@@ -65,11 +65,10 @@ class ThymioConnection:
         self.node = await self._wait_for_ready_node()
 
         print("Node detected:", self.node)
-        print(dir(self.node))
-        print("function description:")
-        print(self.node.function_description)
-        print("vm description:")
+        await self.node.get_vm_description()
+
         print(self.node.vm_description)
+        print(self.node.function_description())
 
         # ONLY NOW do we lock
         await self.node.lock()
