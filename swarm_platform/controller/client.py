@@ -126,6 +126,16 @@ class SwarmClient:
                 "session_id": session_id,
             }
         )
+    
+    async def identify(self, hostname: str):
+        responses = await self.broadcast({
+            "type": "identify",
+            "hostname": hostname,
+        })
+        self._check_results(
+            f"Identify '{hostname}'",
+            responses,
+        )
 
     def _check_results(self, action, responses):
         failures = []

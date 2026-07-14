@@ -161,6 +161,16 @@ class SwarmDaemon:
                     "error": str(e),
                 }
 
+        if t == "identify":
+            hostname = msg["hostname"]
+            if hostname is not None and socket.gethostname() == hostname:
+                await self.robot.top_led(32, 0, 0)
+            else:
+                await self.robot.top_led(0, 0, 0)
+            return {
+                "type": "identified"
+            }
+
         print(f"[DAEMON] unknown message type: {t}", flush=True)
         return {"type": "error", "error": "unknown_command"}
 
