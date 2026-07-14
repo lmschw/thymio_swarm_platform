@@ -66,6 +66,10 @@ class ThymioConnection:
 
         print("Node detected:", self.node)
         print(dir(self.node))
+        print("function description:")
+        print(self.node.function_description)
+        print("vm description:")
+        print(self.node.vm_description)
 
         # ONLY NOW do we lock
         await self.node.lock()
