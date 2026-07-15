@@ -1,6 +1,7 @@
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
+from swarm_platform.utils.utils import save_robot_info_to_csv
 
 COORDINATOR_IP = "10.15.2.63"
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
@@ -12,6 +13,8 @@ async def main():
 
     try:
         client = SwarmClient(COORDINATOR_IP)
+
+        save_robot_info_to_csv(client)
 
         project = client.project(GITHUB_URL, HOSTS)
 

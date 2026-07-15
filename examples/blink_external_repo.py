@@ -1,11 +1,14 @@
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
+from swarm_platform.utils.utils import save_robot_info_to_csv
 
 async def main():
 
     client = SwarmClient("10.15.2.63")
     hosts = ["thymio-04"]
+
+    save_robot_info_to_csv(client)
 
     project = client.project(
         repository="https://github.com/lmschw/thymio_raspberry_swarm_control",

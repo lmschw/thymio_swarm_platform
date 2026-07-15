@@ -1,29 +1,15 @@
-import socket
+import csv
+import datetime
 
-from tdmclient import ClientAsync
+async def save_robot_info_to_csv(client):
+    robots = await client.list_robots()
+    data = [{"hostname": hostname, "ip": robots[hostname]["ip"]} for hostname in robots.keys()]
 
-
-def _tdm_ready():
-    """
-    Real readiness check: can tdmclient actually connect?
-    """
-    try:
-        client = ClientAsync()
-        client.__enter__()
-        client.__exit__(None, None, None)
-        return True
-    except Exception:
-        return False
-
-
-def ensure_tdm_running(timeout=2):
-    try:
-        with socket.create_connection(("127.0.0.1", 8596), timeout):
-            return
-    except OSError:
-        raise RuntimeError(
-            "Thymio Device Manager is not running.\n\n"
-            "Try:\n"
-            "  sudo systemctl status thymio-device-manager.service\n"
-            "  sudo systemctl restart thymio-device-manager.service"
-        )
+    now = datetime.datetime.now()
+    time = str(now.time()).replace(":", "")
+    
+    with open(f"thymio_ips_{now.date()}_{time}.csv", "w", newline="") as csv_file:
+        fieldnames = ["hostname", "ip"]
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
