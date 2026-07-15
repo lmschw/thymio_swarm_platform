@@ -14,7 +14,7 @@ class SwarmClient:
         self.coordinator_ip = coordinator_ip
         self.coordinator_port = coordinator_port
 
-    def project(self, repository: str, hosts: list):
+    def project(self, repository: str, hosts: list = []):
         return Project(self, repository, hosts)
 
     async def list_robots(self):

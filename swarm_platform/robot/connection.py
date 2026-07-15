@@ -3,7 +3,7 @@ import asyncio
 from tdmclient import ClientAsync
 
 from ..utils.exceptions import RobotConnectionError
-from ..utils.utils import ensure_tdm_running
+from ..utils.tdm import ensure_tdm_running
 
 
 class ThymioConnection:
