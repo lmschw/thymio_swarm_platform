@@ -4,9 +4,10 @@ from pathlib import Path
 class SwarmSession:
 
 
-    def __init__(self, client, project, name=None):
+    def __init__(self, client, project, name=None, hosts=[]):
         self.client = client
         self.project = project
+        self.hosts = hosts
 
         self.session_id = (
             name
@@ -21,6 +22,7 @@ class SwarmSession:
             "type": "start_experiment",
             "session_id": self.session_id,
             "name": experiment,
+            "hosts": self.hosts,
             "config": config or {},
         })
 

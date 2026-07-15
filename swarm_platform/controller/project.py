@@ -51,4 +51,5 @@ class Project:
             self.client,
             project=self,
             name=name,
+            hosts=self.hosts,
         )

@@ -6,7 +6,6 @@ import zipfile
 from pathlib import Path
 
 from swarm_platform.controller.project import Project
-from swarm_platform.controller.session import SwarmSession
 
 
 class SwarmClient:

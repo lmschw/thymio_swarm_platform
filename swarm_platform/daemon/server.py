@@ -47,12 +47,14 @@ class SwarmDaemon:
         print("hosts", hosts)
 
         if hosts and len(hosts) > 0 and socket.gethostname() not in hosts:
+            print("not in hosts")
             return {"type": "Not applicable"}
 
         session_id = msg.get("session_id")
         print("session_id", session_id)
 
-        if session_id and session_id != self.active_session:
+        if t != "start_experiment" and session_id and session_id != self.active_session:
+            print("not right session")
             return {"type": "Not applicable"}
 
         if t == "ping":
