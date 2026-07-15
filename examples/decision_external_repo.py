@@ -4,17 +4,16 @@ from swarm_platform.controller.client import SwarmClient
 
 COORDINATOR_IP = "10.15.2.63"
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
-# SESSION_NAME = "active-inference-run"
-# EXPERIMENT_NAME = "active_inference"
 SESSION_NAME = "colour-recognition-run"
 EXPERIMENT_NAME = "colour_recognition"
+HOSTS = []
 
 async def main():
 
     try:
         client = SwarmClient(COORDINATOR_IP)
 
-        project = client.project(GITHUB_URL)
+        project = client.project(GITHUB_URL, HOSTS)
 
         print("Installing...")
         await project.install()

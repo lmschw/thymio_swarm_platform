@@ -42,6 +42,19 @@ class SwarmDaemon:
         print(f"[DAEMON] handling message: {t}", flush=True)
         print(msg, flush=True)
 
+        hosts = msg.get("hosts")
+
+        print("hosts", hosts)
+
+        if hosts and len(hosts) > 0 and socket.gethostname() not in hosts:
+            return {"type": "Not applicable"}
+
+        session_id = msg.get("session_id")
+        print("session_id", session_id)
+
+        if session_id and session_id != self.active_session:
+            return {"type": "Not applicable"}
+
         if t == "ping":
             return {"type": "pong"}
 
@@ -96,6 +109,7 @@ class SwarmDaemon:
             try:
                 session_id = msg["session_id"]
                 print(f"[SESSION {session_id}] start {msg['name']}", flush=True)
+                self.active_session = session_id
                 path = self.log_manager.robot_log(
                     session_id,
                     socket.gethostname(),

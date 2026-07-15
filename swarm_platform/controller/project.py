@@ -1,11 +1,11 @@
 from swarm_platform.controller.session import SwarmSession
 
-
 class Project:
 
-    def __init__(self, client, repository: str):
+    def __init__(self, client, repository: str, hosts: list):
         self.client = client
         self.repository = repository
+        self.hosts = hosts
 
         name = repository.rstrip("/").split("/")[-1]
         if name.endswith(".git"):
@@ -17,6 +17,7 @@ class Project:
         responses = await self.client.broadcast({
             "type": "clone_project",
             "repository": self.repository,
+            "hosts": self.hosts,
         })
         self.client._check_results(
             "Project installation",
@@ -27,6 +28,7 @@ class Project:
     async def update(self):
         responses = await self.client.broadcast({
             "type": "update_project",
+            "hosts": self.hosts,
         })
         self.client._check_results(
             "Project update",
@@ -37,6 +39,7 @@ class Project:
     async def activate(self):
         responses = await self.client.broadcast({
             "type": "activate_project",
+            "hosts": self.hosts,
         })
         self.client._check_results(
             "Project activation",
