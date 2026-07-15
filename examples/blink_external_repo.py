@@ -5,9 +5,11 @@ from swarm_platform.controller.client import SwarmClient
 async def main():
 
     client = SwarmClient("10.15.2.63")
+    hosts = ["thymio-04"]
 
     project = client.project(
-        "https://github.com/lmschw/thymio_raspberry_swarm_control"
+        repository="https://github.com/lmschw/thymio_raspberry_swarm_control",
+        hosts=hosts,
     )
 
     #print("Installing...")
