@@ -44,7 +44,6 @@ class Robot:
 
     # LEDs
     async def top_led(self, r: int, g: int, b: int):
-
         await self.connection.node.set_variables({
             "leds.top": [int(r), int(g), int(b)]
         })
