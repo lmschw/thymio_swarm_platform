@@ -38,6 +38,7 @@ class ProjectManager:
         shutil.rmtree(tmp, ignore_errors=True)
 
     def update(self):
+        subprocess.run("git restore .", check=True) # remove all local changes
         subprocess.run('sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -d' ' -f5-8)Z"', check=True)
         subprocess.run(
             ["git", "-C", str(self.active_dir), "pull"],

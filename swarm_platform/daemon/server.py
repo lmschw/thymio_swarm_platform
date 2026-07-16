@@ -135,6 +135,7 @@ class SwarmDaemon:
             }
             
         if t == "update_code":
+            subprocess.run("git restore .", check=True) # remove all local changes
             subprocess.run('sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -d' ' -f5-8)Z"', check=True)
             subprocess.run(["git", "pull"], check=True)
             subprocess.run([os.environ["UV_BIN"], "sync"], check=True)
