@@ -87,7 +87,7 @@ class SwarmClient:
             )
         }
 
-    async def collect_logs(self, session_id, output_dir, delete_remote=False):
+    async def collect_logs(self, session_id, hosts, output_dir, delete_remote=False):
         robots = await self.list_robots()
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -98,6 +98,7 @@ class SwarmClient:
                 {
                     "type": "collect_logs",
                     "session_id": session_id,
+                    "hosts": hosts,
                     "delete": delete_remote,
                 },
             )
@@ -118,11 +119,12 @@ class SwarmClient:
             with zipfile.ZipFile(io.BytesIO(data)) as archive:
                 archive.extractall(destination)
 
-    async def delete_logs(self, session_id):
+    async def delete_logs(self, session_id, hosts):
         return await self.broadcast(
             {
                 "type": "delete_logs",
                 "session_id": session_id,
+                "hosts": hosts,
             }
         )
     

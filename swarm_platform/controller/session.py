@@ -52,11 +52,13 @@ class SwarmSession:
     async def collect_logs(self, output_dir="results", delete_remote=True):
         await self.client.collect_logs(
             session_id=self.session_id,
+            hosts=self.hosts,
             output_dir=Path(output_dir) / self.session_id,
             delete_remote=delete_remote,
         )
     
     async def delete_logs(self):
         await self.client.delete_logs(
-            self.session_id
+            self.session_id,
+            self.hosts
         )

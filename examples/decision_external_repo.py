@@ -7,8 +7,7 @@ COORDINATOR_IP = "10.15.2.63"
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
 SESSION_NAME = "communication_test-run"
 EXPERIMENT_NAME = "communication_test"
-HOSTS = [
-    "thymio-04"]
+HOSTS = ["thymio-1", "thymio-04"]
 
 async def main():
 
