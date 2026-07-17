@@ -14,6 +14,7 @@ from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
 from swarm_platform.daemon.logger import SessionLogger
 from swarm_platform.daemon.log_manager import LogManager
+from swarm_platform.tracking.optitrack_tracker import OptitrackTracker
 
 class SwarmDaemon:
 
@@ -88,6 +89,10 @@ class SwarmDaemon:
             #     except asyncio.CancelledError:
             #         pass
 
+            if self.tracker is not None:
+                await self.tracker.stop()
+                self.tracker = None
+                self.robot.set_tracker(None)
             await self.robot.stop()
             await self.robot.top_led(0, 0, 0)
 
@@ -200,11 +205,25 @@ class SwarmDaemon:
 
     async def _start_experiment(self, msg):
         if self.running_experiment:
-            print("already running")
-            return {"type": "error", "error": "Experiment already running"}
+            return {
+                "type": "error",
+                "error": "Experiment already running",
+            }
 
         name = msg["name"]
         config = msg.get("config", {})
+
+        tracking_cfg = config.get("tracking")
+        if tracking_cfg is not None:
+            self.tracker = OptitrackTracker(
+                server=tracking_cfg["host"],
+                mapping=tracking_cfg["mapping"],
+            )
+            await self.tracker.start()
+            self.robot.set_tracker(self.tracker)
+        else:
+            self.robot.set_tracker(None)
+
         experiment_cls = self.project_manager.experiment(name)
 
         self.experiment = experiment_cls(
@@ -214,9 +233,11 @@ class SwarmDaemon:
         )
 
         self.running_experiment = True
+
         self.experiment_task = asyncio.create_task(
             self._run_experiment()
         )
+
         return {"type": "started"}
 
     # ---------------------------

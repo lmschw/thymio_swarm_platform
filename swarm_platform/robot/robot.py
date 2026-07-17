@@ -1,4 +1,5 @@
 import asyncio
+import socket
 
 from .connection import ThymioConnection
 from .state import RobotState
@@ -10,6 +11,8 @@ class Robot:
     def __init__(self, config: RobotConfig | None = None):
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
+        self.tracking = None
+        self.hostname = socket.gethostname()
 
     # Context manager
     async def __aenter__(self):
@@ -30,7 +33,6 @@ class Robot:
     async def disconnect(self):
         await self.connection.disconnect()
 
-
     # Motors
     async def drive(self, left: int, right: int):
 
@@ -41,6 +43,7 @@ class Robot:
 
     async def stop(self):
         await self.drive(0, 0)
+        self.robot.set_tracking(None)
 
     # LEDs
     async def top_led(self, r: int, g: int, b: int):
@@ -118,3 +121,22 @@ class Robot:
         if self.connection.node.var.get("prox.comm.rx") == 0:
             return None
         return int(self.connection.node.var.get("prox.comm.rx"))
+    
+
+    # Tracking (Optitrack)
+    def set_tracking(self, tracking):
+        self.tracking = tracking
+
+    async def global_position(self):
+        if self.tracking is None:
+            raise RuntimeError(
+                "Tracking has not been enabled."
+            )
+        return await self.tracking.position(self.hostname)
+    
+    async def all_positions(self):
+        if self.tracking is None:
+            raise RuntimeError(
+                "Tracking is not enabled for this experiment."
+            )
+        return self.tracking.all_positions()

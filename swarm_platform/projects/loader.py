@@ -38,11 +38,15 @@ class ProjectLoader:
             module = importlib.import_module(module_name)
             experiment_cls = getattr(module, class_name)
 
-            experiments[experiment_name] = experiment_cls
+            experiments[experiment_name] = {
+                "class": experiment_cls,
+                "tracking": info.get("tracking", False),
+            }
 
         return Project(
             name=data["name"],
             version=data["version"],
             path=directory,
             experiments=experiments,
+            tracking=data.get("tracking"),
         )
