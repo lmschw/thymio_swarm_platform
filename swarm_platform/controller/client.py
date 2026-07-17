@@ -110,7 +110,8 @@ class SwarmClient:
             content = response.get("content")
 
             if content is None:
-                print(f"[{robot_id}] No logs.")
+                if hosts == [] or robot_id in hosts:
+                    print(f"[{robot_id}] No logs.")
                 continue
 
             data = base64.b64decode(content)
