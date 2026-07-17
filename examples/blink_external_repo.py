@@ -6,9 +6,9 @@ from swarm_platform.utils.utils import save_robot_info_to_csv
 async def main():
 
     client = SwarmClient("10.15.2.63")
-    hosts = ["thymio-04"]
+    hosts = ["thymio-01"]
 
-    await save_robot_info_to_csv(client)
+    #await save_robot_info_to_csv(client)
 
     project = client.project(
         repository="https://github.com/lmschw/thymio_raspberry_swarm_control",
@@ -25,10 +25,10 @@ async def main():
     await project.activate()
 
     #print("Activating session...")
-    session = project.session("test-run")
+    session = project.session("optitrack_positions-run")
 
     #print("Starting...")
-    await session.start("blink")
+    await session.start("optitrack_positions")
 
     while True:
 

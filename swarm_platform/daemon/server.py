@@ -92,7 +92,7 @@ class SwarmDaemon:
             if self.tracker is not None:
                 await self.tracker.stop()
                 self.tracker = None
-                self.robot.set_tracker(None)
+                self.robot.set_tracking(None)
             await self.robot.stop()
             await self.robot.top_led(0, 0, 0)
 
@@ -220,9 +220,9 @@ class SwarmDaemon:
                 mapping=tracking_cfg["mapping"],
             )
             await self.tracker.start()
-            self.robot.set_tracker(self.tracker)
+            self.robot.set_tracking(self.tracker)
         else:
-            self.robot.set_tracker(None)
+            self.robot.set_tracking(None)
 
         experiment_cls = self.project_manager.experiment(name)
 
