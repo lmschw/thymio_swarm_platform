@@ -13,8 +13,11 @@ dependencies = [
     "numpy",
     "pyyaml>=6.0.3",
     "pandas>=3.0.3",
-    "natnet>=0.2.0",
+    "natnet",
 ]
 
 [tool.setuptools.packages.find]
 include = ["swarm_platform*"]
+
+[tool.uv.sources]
+natnet = { git = "https://github.com/mje-nz/python_natnet.git" }

@@ -14,6 +14,15 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "attrs"
+version = "26.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/8e/82a0fe20a541c03148528be8cac2408564a6c9a0cc7e9171802bc1d26985/attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32", size = 952055, upload-time = "2026-03-19T14:22:25.026Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309", size = 67548, upload-time = "2026-03-19T14:22:23.645Z" },
+]
+
+[[package]]
 name = "ifaddr"
 version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -24,11 +33,10 @@ wheels = [
 
 [[package]]
 name = "natnet"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ac/3e/b29f2ed94d12355695639410b18f9bb12a1f17e030d7d82c1ac5a2585669/natnet-0.2.0.tar.gz", hash = "sha256:e348c440b34716815186392686e7fa594cfc1a74d7050d92793b8ebb09e0aec5", size = 13238, upload-time = "2025-09-09T15:00:57.718Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/2b/14e6995b3d05c25039acb31178816370079665e7aeb59d83e5fb783b870c/natnet-0.2.0-py3-none-any.whl", hash = "sha256:babeba88c41df3b001658b5994bf1c15c3b12fa1110f7fb9a86e393444efb14e", size = 14457, upload-time = "2025-09-09T15:00:56.424Z" },
+version = "0.1.0"
+source = { git = "https://github.com/mje-nz/python_natnet.git#dcb6fd0a2b7c8c5fe92c26595f50bd9a5d649368" }
+dependencies = [
+    { name = "attrs" },
 ]
 
 [[package]]
@@ -326,7 +334,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "natnet", specifier = ">=0.2.0" },
+    { name = "natnet", git = "https://github.com/mje-nz/python_natnet.git" },
     { name = "numpy" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pyyaml", specifier = ">=6.0.3" },
