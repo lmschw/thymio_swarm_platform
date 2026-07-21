@@ -95,6 +95,12 @@ class SwarmDaemon:
             self.experiment = None
             self.experiment_task = None
 
+            if self.tracker:
+                await self.tracker.stop()
+                self.tracker = None
+
+            self.robot.tracker = None
+
             return {"type": "stopped"}
 
         if t == "start_experiment":
@@ -225,11 +231,6 @@ class SwarmDaemon:
         )
 
         if experiment_cfg.tracking:
-            if self.tracker is None:
-                from swarm_platform.tracking.optitrack_tracker import (
-                    OptitrackTracker
-                )
-                self.tracker = OptitrackTracker()
 
             tracking_config = (
                 self.project_manager
@@ -245,15 +246,22 @@ class SwarmDaemon:
                         "but project has no tracking config"
                     ),
                 }
-            print(
-                "TRACKER DEBUG:",
-                self.tracker,
-                type(self.tracker),
-                flush=True,
-            )
-            await self.tracker.start(
-                tracking_config
-            )
+
+
+            if self.tracker is None:
+
+                from swarm_platform.tracking.optitrack_tracker import (
+                    OptitrackTracker
+                )
+
+                self.tracker = OptitrackTracker(
+                    host=tracking_config.host,
+                    hostname_map=tracking_config.hostname_map,
+                )
+
+
+            await self.tracker.start()
+
             self.robot.tracker = self.tracker
         else:
             self.robot.tracker = None
