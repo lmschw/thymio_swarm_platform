@@ -32,7 +32,9 @@ async def main():
 
     while True:
 
-        cmd = input("\n[p]ause  [r]esume  [s]top > ").strip().lower()
+        cmd = (await asyncio.get_event_loop().run_in_executor(
+            None, input, "\n[p]ause  [r]esume  [s]top > "
+        )).strip().lower()
 
         if cmd == "p":
             print("Pausing...")
