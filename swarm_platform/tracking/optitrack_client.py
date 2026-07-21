@@ -73,9 +73,11 @@ class OptitrackClient:
                         position=rb.position,
                         orientation=rb.orientation,
                     )
-    def get_all_poses(self):
-        print(self.poses)
-        return self.poses
+
+    async def get_all_poses(self):
+        return dict(
+            self.poses
+        )
 
     def stop(self):
         self.running = False

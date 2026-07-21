@@ -181,6 +181,7 @@ class SwarmDaemon:
         
         if t == "tracking_update":
             self.global_poses = msg["poses"]
+            print("self.global_poses", self.global_poses)
             return {
                 "type": "tracking_updated"
             }
