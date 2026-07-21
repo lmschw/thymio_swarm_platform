@@ -169,15 +169,32 @@ class SwarmClient:
         )
 
     async def tracking_loop(self):
-        print("tracking_loop", self.tracker)
-        while self.tracker:
-            poses = self.tracker.get_all_poses()
-            print(poses)
-            await self.broadcast({
-                "type": "tracking_update",
-                "poses": {
-                    hostname: pose.to_dict()
-                    for hostname, pose in poses.items()
-                }
-            })
-            await asyncio.sleep(0.1)
+        print("[TRACKING LOOP] started", flush=True)
+
+        while True:
+            try:
+                print("[TRACKING LOOP] tick", flush=True)
+
+                poses = await self.tracker.get_all_poses()
+
+                print(
+                    f"[TRACKING LOOP] poses={poses}",
+                    flush=True,
+                )
+
+                if poses:
+                    await self.broadcast({
+                        "type": "tracking_update",
+                        "poses": {
+                            hostname: pose.to_dict()
+                            for hostname, pose in poses.items()
+                        }
+                    })
+
+                await asyncio.sleep(0.1)
+
+            except Exception as e:
+                print(
+                    f"[TRACKING LOOP ERROR] {repr(e)}",
+                    flush=True,
+                )
