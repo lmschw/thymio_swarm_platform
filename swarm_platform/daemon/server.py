@@ -231,7 +231,6 @@ class SwarmDaemon:
         )
 
         if experiment_cfg.tracking:
-
             tracking_config = (
                 self.project_manager
                 .project
@@ -249,17 +248,15 @@ class SwarmDaemon:
 
 
             if self.tracker is None:
-
                 from swarm_platform.tracking.optitrack_tracker import (
                     OptitrackTracker
                 )
 
                 self.tracker = OptitrackTracker(
-                    host=tracking_config.host,
-                    hostname_map=tracking_config.hostname_map,
+                    host=tracking_config["host"],
+                    hostname_map=tracking_config["hostname_map"],
                 )
-
-
+                
             await self.tracker.start()
 
             self.robot.tracker = self.tracker
