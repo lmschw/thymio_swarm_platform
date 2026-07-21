@@ -29,14 +29,14 @@ class SwarmDaemon:
             Path("active_project")
         )
 
-        self.robot = Robot()
+        self.robot = Robot(tracker=self)
         self.experiment = None
         self.experiment_task = None
         self.running_experiment = False
         self.active_session = None
         self.log_manager = LogManager()
         self.logger = None
-        self.tracker = None
+        self.global_poses = {}
 
     async def handle(self, msg: dict):
         t = msg.get("type")
@@ -94,12 +94,6 @@ class SwarmDaemon:
 
             self.experiment = None
             self.experiment_task = None
-
-            if self.tracker:
-                await self.tracker.stop()
-                self.tracker = None
-
-            self.robot.tracker = None
 
             return {"type": "stopped"}
 
@@ -184,6 +178,12 @@ class SwarmDaemon:
             return {
                 "type": "identified"
             }
+        
+        if t == "tracking_update":
+            self.global_poses = msg["poses"]
+            return {
+                "type": "tracking_updated"
+            }
 
         print(f"[DAEMON] unknown message type: {t}", flush=True)
         return {"type": "error", "error": "unknown_command"}
@@ -223,45 +223,6 @@ class SwarmDaemon:
             .project
             .experiment_config(name)
         )
-
-        print(
-            "EXPERIMENT CONFIG:",
-            experiment_cfg,
-            flush=True,
-        )
-
-        if experiment_cfg.tracking:
-            tracking_config = (
-                self.project_manager
-                .project
-                .tracking
-            )
-
-            if tracking_config is None:
-                return {
-                    "type": "error",
-                    "error": (
-                        "Experiment requires tracking "
-                        "but project has no tracking config"
-                    ),
-                }
-
-
-            if self.tracker is None:
-                from swarm_platform.tracking.optitrack_tracker import (
-                    OptitrackTracker
-                )
-
-                self.tracker = OptitrackTracker(
-                    host=tracking_config["host"],
-                    hostname_map=tracking_config["hostname_map"],
-                )
-                
-            await self.tracker.start()
-
-            self.robot.tracker = self.tracker
-        else:
-            self.robot.tracker = None
 
         experiment_cls = experiment_cfg.cls
 

@@ -6,7 +6,7 @@ from swarm_platform.utils.utils import save_robot_info_to_csv
 async def main():
 
     client = SwarmClient("10.15.2.63")
-    hosts = ["thymio-01"]
+    hosts = ["thymio-18"]
 
     #await save_robot_info_to_csv(client)
 

@@ -13,6 +13,7 @@ class SwarmClient:
     def __init__(self, coordinator_ip, coordinator_port=9100):
         self.coordinator_ip = coordinator_ip
         self.coordinator_port = coordinator_port
+        self.tracker = None
 
     def project(self, repository: str, hosts: list = []):
         return Project(self, repository, hosts)
@@ -150,3 +151,26 @@ class SwarmClient:
             raise RuntimeError(
                 f"{action} failed:\n  " + "\n  ".join(failures)
             )
+        
+    async def start_tracking(self, config):
+        from swarm_platform.tracking.optitrack_client import OptitrackClient
+        self.tracker = OptitrackClient(
+            host=config["host"],
+            hostname_map=config["hostname_map"],
+        )
+        await self.tracker.start()
+
+    async def tracking_loop(self):
+        while self.tracker:
+            poses = self.tracker.get_all_poses()
+            await self.broadcast({
+                "type": "tracking_update",
+                "poses": {
+                    hostname: {
+                        "position": pose.position,
+                        "orientation": pose.orientation,
+                    }
+                    for hostname, pose in poses.items()
+                }
+            })
+            await asyncio.sleep(0.1)

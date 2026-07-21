@@ -1,13 +1,9 @@
-import asyncio
 import threading
-
 import natnet
 
-from .pose import Pose
+from swarm_platform.tracking.pose import Pose
 
-
-class OptitrackTracker:
-
+class OptitrackClient:
     def __init__(
         self,
         host: str,
@@ -19,8 +15,7 @@ class OptitrackTracker:
         self.client = None
 
         self.robot_ids = {}
-
-        self.latest_poses = {}
+        self.poses = {}
 
         self.running = False
         self.thread = None
@@ -44,28 +39,20 @@ class OptitrackTracker:
         self.thread.start()
 
     def _build_mapping(self):
-        definitions = self.client._model_definitions
-        names_to_ids = {
+        names = {
             rb.name: rb.id_
-            for rb in definitions
+            for rb in self.client._model_definitions
             if hasattr(rb, "id_")
         }
-
-        print("Rigid bodies:")
-        print(names_to_ids)
-
         for hostname, rigid_name in self.hostname_map.items():
-
-            if rigid_name not in names_to_ids:
+            if rigid_name not in names:
                 raise RuntimeError(
-                    f"Rigid body '{rigid_name}' "
-                    f"for {hostname} not found"
+                    f"Rigid body {rigid_name} missing"
                 )
-            self.robot_ids[hostname] = (
-                names_to_ids[rigid_name]
-            )
+            self.robot_ids[hostname] = names[rigid_name]
+
         print(
-            "Robot mapping:",
+            "Tracking map:",
             self.robot_ids
         )
 
@@ -80,23 +67,15 @@ class OptitrackTracker:
         timing,
     ):
         for rb in rigid_bodies:
-
             for hostname, rb_id in self.robot_ids.items():
-
                 if rb.id_ == rb_id:
-
-                    self.latest_poses[hostname] = Pose(
+                    self.poses[hostname] = Pose(
                         position=rb.position,
                         orientation=rb.orientation,
                     )
 
-    async def get_pose(self, hostname):
-        return self.latest_poses.get(hostname)
+    def get_all_poses(self):
+        return dict(self.poses)
 
-    async def get_all_poses(self):
-        return dict(
-            self.latest_poses
-        )
-
-    async def stop(self):
+    def stop(self):
         self.running = False

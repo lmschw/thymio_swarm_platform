@@ -11,8 +11,8 @@ class Robot:
     def __init__(self, config: RobotConfig | None = None, tracker=None):
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
-        self.tracker = tracker
         self.hostname = socket.gethostname()
+        self.tracker = tracker
 
     # Context manager
     async def __aenter__(self):
@@ -122,12 +122,10 @@ class Robot:
         return int(self.connection.node.var.get("prox.comm.rx"))
     
     async def get_global_pose(self):
-        if self.tracker is None:
-            return None
-        return await self.tracker.get_pose()
-
+        poses = self.tracker.global_poses
+        return poses.get(self.hostname)
 
     async def get_all_global_poses(self):
-        if self.tracker is None:
-            return {}
-        return await self.tracker.get_all_poses()
+        return dict(
+            self.tracker.global_poses
+        )

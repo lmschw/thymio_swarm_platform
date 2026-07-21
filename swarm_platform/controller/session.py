@@ -1,4 +1,5 @@
 import uuid
+import asyncio
 from pathlib import Path
 
 class SwarmSession:
@@ -15,6 +16,13 @@ class SwarmSession:
         )
 
     async def start(self, experiment, config=None):
+        if config.tracking:
+            await self.client.start_tracking(
+                self.project.tracking
+            )
+            self.tracking_task = asyncio.create_task(
+                self.client.tracking_loop()
+            )
 
         await self.project.activate()
 
@@ -44,6 +52,11 @@ class SwarmSession:
         })
 
     async def stop(self):
+        if self.tracking_task:
+            self.tracking_task.cancel()
+
+        if self.client.tracker:
+            self.client.tracker.stop() 
         await self.client.broadcast({
             "type": "stop",
             "session_id": self.session_id,
