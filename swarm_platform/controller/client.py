@@ -14,6 +14,7 @@ class SwarmClient:
         self.coordinator_ip = coordinator_ip
         self.coordinator_port = coordinator_port
         self.tracker = None
+        self.tracking_task = None
 
     def project(self, repository: str, hosts: list = []):
         return Project(self, repository, hosts)
@@ -153,23 +154,39 @@ class SwarmClient:
             )
         
     async def start_tracking(self, config):
-        from swarm_platform.tracking.optitrack_client import OptitrackClient
+        from swarm_platform.tracking.optitrack_client import (
+            OptitrackClient
+        )
+        if self.tracker is not None:
+            return
         self.tracker = OptitrackClient(
             host=config["host"],
             hostname_map=config["hostname_map"],
         )
         await self.tracker.start()
+        self.tracking_task = asyncio.create_task(
+            self.tracking_loop()
+        )
+
+    async def stop_tracking(self):
+
+        if self.tracking_task:
+            self.tracking_task.cancel()
+            self.tracking_task = None
+
+        if self.tracker:
+            await self.tracker.stop()
+            self.tracker = None
 
     async def tracking_loop(self):
+        print("tracking_loop", self.tracker)
         while self.tracker:
             poses = self.tracker.get_all_poses()
+            print(poses)
             await self.broadcast({
                 "type": "tracking_update",
                 "poses": {
-                    hostname: {
-                        "position": pose.position,
-                        "orientation": pose.orientation,
-                    }
+                    hostname: pose.to_dict()
                     for hostname, pose in poses.items()
                 }
             })

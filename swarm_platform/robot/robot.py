@@ -122,7 +122,9 @@ class Robot:
         return int(self.connection.node.var.get("prox.comm.rx"))
     
     async def get_global_pose(self):
+        print("in get_global_pose")
         poses = self.tracker.global_poses
+        print(poses)
         return poses.get(self.hostname)
 
     async def get_all_global_poses(self):
