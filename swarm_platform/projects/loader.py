@@ -1,5 +1,6 @@
 import importlib
 import yaml
+import sys
 
 from pathlib import Path
 
@@ -7,9 +8,13 @@ from .project import Project, ExperimentConfig
 
 
 class ProjectLoader:
-
-
     def load(self, path: Path) -> Project:
+        # Make project modules importable
+        project_root = str(path)
+
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
         yaml_path = path / "swarm_project.yaml"
 
         with open(yaml_path, "r") as f:
