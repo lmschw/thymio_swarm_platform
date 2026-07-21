@@ -16,7 +16,9 @@ class SwarmSession:
         )
 
     async def start(self, experiment, config=None):
-        if config.tracking:
+        experiment_cfg = self.project.experiment_config(experiment)
+
+        if experiment_cfg.get("tracking", False):
             await self.client.start_tracking(
                 self.project.tracking
             )
