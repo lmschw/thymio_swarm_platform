@@ -16,17 +16,15 @@ class SwarmSession:
         )
 
     async def start(self, experiment, config=None):
+        await self.project.activate()
+
         experiment_cfg = self.project.experiment_config(experiment)
 
         if experiment_cfg.get("tracking", False):
             await self.client.start_tracking(
                 self.project.tracking
             )
-            self.tracking_task = asyncio.create_task(
-                self.client.tracking_loop()
-            )
 
-        await self.project.activate()
 
         responses = await self.client.broadcast({
             "type": "start_experiment",
@@ -54,9 +52,6 @@ class SwarmSession:
         })
 
     async def stop(self):
-        if self.tracking_task:
-            self.tracking_task.cancel()
-
         if self.client.tracker:
             self.client.tracker.stop() 
         await self.client.broadcast({

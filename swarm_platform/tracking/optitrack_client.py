@@ -1,5 +1,6 @@
 import threading
 import natnet
+import asyncio
 
 from swarm_platform.tracking.pose import Pose
 
@@ -22,21 +23,46 @@ class OptitrackClient:
 
 
     async def start(self):
+
         self.client = natnet.Client.connect(
             self.host,
             timeout=10,
         )
+
         print("OptiTrack connected")
+
         self._build_mapping()
+
         self.client.set_callback(
             self._callback
         )
+
         self.running = True
+
         self.thread = threading.Thread(
             target=self._spin,
             daemon=True,
         )
+
         self.thread.start()
+
+        # Wait for first frame
+        timeout = 5
+        start = asyncio.get_event_loop().time()
+
+        while not self.poses:
+
+            if asyncio.get_event_loop().time() - start > timeout:
+                raise RuntimeError(
+                    "No OptiTrack poses received"
+                )
+
+            await asyncio.sleep(0.05)
+
+        print(
+            "Initial poses received:",
+            self.poses,
+        )
 
     def _build_mapping(self):
         names = {
@@ -57,8 +83,16 @@ class OptitrackClient:
         )
 
     def _spin(self):
+
         while self.running:
-            self.client.spin()
+            try:
+                self.client.spin()
+            except Exception as e:
+                print(
+                    f"[NATNET ERROR] {e}",
+                    flush=True,
+                )
+                break
 
     def _callback(
         self,

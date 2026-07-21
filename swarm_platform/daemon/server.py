@@ -14,6 +14,7 @@ from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
 from swarm_platform.daemon.logger import SessionLogger
 from swarm_platform.daemon.log_manager import LogManager
+from swarm_platform.tracking.pose import Pose
 
 class SwarmDaemon:
 
@@ -180,8 +181,15 @@ class SwarmDaemon:
             }
         
         if t == "tracking_update":
-            self.global_poses = msg["poses"]
-            print("self.global_poses", self.global_poses)
+
+            self.robot.global_poses = {
+                hostname: Pose(
+                    position=tuple(data["position"]),
+                    orientation=tuple(data["orientation"]),
+                )
+                for hostname, data in msg["poses"].items()
+            }
+
             return {
                 "type": "tracking_updated"
             }

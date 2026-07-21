@@ -89,6 +89,11 @@ class SwarmClient:
             )
         }
 
+    async def broadcast_tracking(self, message):
+        robots = await self.list_robots()
+        for robot in robots.values():
+            await self.send(robot, message)
+
     async def collect_logs(self, session_id, hosts, output_dir, delete_remote=False):
         robots = await self.list_robots()
         output_dir = Path(output_dir)
@@ -169,6 +174,7 @@ class SwarmClient:
         )
 
     async def tracking_loop(self):
+
         print("[TRACKING LOOP] started", flush=True)
 
         while True:
@@ -183,7 +189,7 @@ class SwarmClient:
                 )
 
                 if poses:
-                    await self.broadcast({
+                    await self.broadcast_tracking({
                         "type": "tracking_update",
                         "poses": {
                             hostname: pose.to_dict()
@@ -191,10 +197,10 @@ class SwarmClient:
                         }
                     })
 
-                await asyncio.sleep(0.1)
-
             except Exception as e:
                 print(
                     f"[TRACKING LOOP ERROR] {repr(e)}",
                     flush=True,
                 )
+
+            await asyncio.sleep(0.5)
