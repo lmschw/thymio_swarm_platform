@@ -218,6 +218,12 @@ class SwarmDaemon:
             .experiment_config(name)
         )
 
+        print(
+            "EXPERIMENT CONFIG:",
+            experiment_cfg,
+            flush=True,
+        )
+
         if experiment_cfg.tracking:
             if self.tracker is None:
                 from swarm_platform.tracking.optitrack_tracker import (
@@ -239,10 +245,16 @@ class SwarmDaemon:
                         "but project has no tracking config"
                     ),
                 }
-
+            print(
+                "TRACKER DEBUG:",
+                self.tracker,
+                type(self.tracker),
+                flush=True,
+            )
             await self.tracker.start(
                 tracking_config
             )
+            self.robot.tracker = self.tracker
         else:
             self.robot.tracker = None
 
