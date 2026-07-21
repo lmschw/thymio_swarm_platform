@@ -15,6 +15,7 @@ class SwarmClient:
         self.coordinator_port = coordinator_port
         self.tracker = None
         self.tracking_task = None
+        self.tracking_verbose = False
 
     def project(self, repository: str, hosts: list = []):
         return Project(self, repository, hosts)
@@ -164,9 +165,11 @@ class SwarmClient:
         )
         if self.tracker is not None:
             return
+        self.tracking_verbose = config.get("verbose", False)
         self.tracker = OptitrackClient(
             host=config["host"],
             hostname_map=config["hostname_map"],
+            verbose=self.tracking_verbose,
         )
         await self.tracker.start()
         self.tracking_task = asyncio.create_task(
@@ -175,18 +178,18 @@ class SwarmClient:
 
     async def tracking_loop(self):
 
-        print("[TRACKING LOOP] started", flush=True)
+        if self.tracking_verbose:
+            print("[TRACKING LOOP] started", flush=True)
 
         while True:
             try:
-                print("[TRACKING LOOP] tick", flush=True)
-
                 poses = await self.tracker.get_all_poses()
 
-                print(
-                    f"[TRACKING LOOP] poses={poses}",
-                    flush=True,
-                )
+                if self.tracking_verbose:
+                    print(
+                        f"[TRACKING LOOP] poses={poses}",
+                        flush=True,
+                    )
 
                 if poses:
                     await self.broadcast_tracking({

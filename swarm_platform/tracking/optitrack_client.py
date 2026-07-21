@@ -4,14 +4,27 @@ import asyncio
 
 from swarm_platform.tracking.pose import Pose
 
+
+class _QuietNatNetLogger(natnet.Logger):
+    """Suppresses the NatNet SDK's per-frame debug/info chatter (clock sync, etc.)."""
+
+    def debug(self, msg, *args):
+        pass
+
+    def info(self, msg, *args):
+        pass
+
+
 class OptitrackClient:
     def __init__(
         self,
         host: str,
         hostname_map: dict[str, str],
+        verbose: bool = False,
     ):
         self.host = host
         self.hostname_map = hostname_map
+        self.verbose = verbose
 
         self.client = None
 
@@ -27,9 +40,11 @@ class OptitrackClient:
         self.client = natnet.Client.connect(
             self.host,
             timeout=10,
+            logger=natnet.Logger() if self.verbose else _QuietNatNetLogger(),
         )
 
-        print("OptiTrack connected")
+        if self.verbose:
+            print("OptiTrack connected")
 
         self._build_mapping()
 
@@ -59,10 +74,11 @@ class OptitrackClient:
 
             await asyncio.sleep(0.05)
 
-        print(
-            "Initial poses received:",
-            self.poses,
-        )
+        if self.verbose:
+            print(
+                "Initial poses received:",
+                self.poses,
+            )
 
     def _build_mapping(self):
         names = {
@@ -77,10 +93,11 @@ class OptitrackClient:
                 )
             self.robot_ids[hostname] = names[rigid_name]
 
-        print(
-            "Tracking map:",
-            self.robot_ids
-        )
+        if self.verbose:
+            print(
+                "Tracking map:",
+                self.robot_ids
+            )
 
     def _spin(self):
 
