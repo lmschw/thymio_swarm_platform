@@ -168,16 +168,6 @@ class SwarmClient:
             self.tracking_loop()
         )
 
-    async def stop_tracking(self):
-
-        if self.tracking_task:
-            self.tracking_task.cancel()
-            self.tracking_task = None
-
-        if self.tracker:
-            await self.tracker.stop()
-            self.tracker = None
-
     async def tracking_loop(self):
         print("tracking_loop", self.tracker)
         while self.tracker:

@@ -54,7 +54,6 @@ class SwarmSession:
         })
 
     async def stop(self):
-        await self.client.stop_tracking()
         if self.tracking_task:
             self.tracking_task.cancel()
 
