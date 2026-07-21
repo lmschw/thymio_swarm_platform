@@ -220,25 +220,29 @@ class SwarmDaemon:
 
         if experiment_cfg.tracking:
             if self.tracker is None:
-                tracking_config = (
-                    self.project_manager
-                    .project
-                    .tracking
+                from swarm_platform.tracking.optitrack_tracker import (
+                    OptitrackTracker
                 )
+                self.tracker = OptitrackTracker()
 
-                if tracking_config is None:
-                    return {
-                        "type": "error",
-                        "error": (
-                            "Experiment requires tracking "
-                            "but project has no tracking config"
-                        ),
-                    }
+            tracking_config = (
+                self.project_manager
+                .project
+                .tracking
+            )
 
-                await self.tracker.start(
-                    tracking_config
-                )
-            self.robot.tracker = self.tracker
+            if tracking_config is None:
+                return {
+                    "type": "error",
+                    "error": (
+                        "Experiment requires tracking "
+                        "but project has no tracking config"
+                    ),
+                }
+
+            await self.tracker.start(
+                tracking_config
+            )
         else:
             self.robot.tracker = None
 
