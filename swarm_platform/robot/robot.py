@@ -8,10 +8,10 @@ from ..utils.config import RobotConfig
 
 class Robot:
 
-    def __init__(self, config: RobotConfig | None = None):
+    def __init__(self, config: RobotConfig | None = None, tracker=None):
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
-        self.tracking = None
+        self.tracker = tracker
         self.hostname = socket.gethostname()
 
     # Context manager
@@ -43,7 +43,6 @@ class Robot:
 
     async def stop(self):
         await self.drive(0, 0)
-        self.robot.set_tracking(None)
 
     # LEDs
     async def top_led(self, r: int, g: int, b: int):
@@ -122,21 +121,13 @@ class Robot:
             return None
         return int(self.connection.node.var.get("prox.comm.rx"))
     
+    async def get_global_pose(self):
+        if self.tracker is None:
+            return None
+        return await self.tracker.get_pose()
 
-    # Tracking (Optitrack)
-    def set_tracking(self, tracking):
-        self.tracking = tracking
 
-    async def global_position(self):
-        if self.tracking is None:
-            raise RuntimeError(
-                "Tracking has not been enabled."
-            )
-        return await self.tracking.position(self.hostname)
-    
-    async def all_positions(self):
-        if self.tracking is None:
-            raise RuntimeError(
-                "Tracking is not enabled for this experiment."
-            )
-        return self.tracking.all_positions()
+    async def get_all_global_poses(self):
+        if self.tracker is None:
+            return {}
+        return await self.tracker.get_all_poses()

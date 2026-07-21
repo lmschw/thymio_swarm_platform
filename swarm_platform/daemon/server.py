@@ -14,7 +14,6 @@ from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
 from swarm_platform.daemon.logger import SessionLogger
 from swarm_platform.daemon.log_manager import LogManager
-from swarm_platform.tracking.optitrack_tracker import OptitrackTracker
 
 class SwarmDaemon:
 
@@ -37,6 +36,7 @@ class SwarmDaemon:
         self.active_session = None
         self.log_manager = LogManager()
         self.logger = None
+        self.tracker = None
 
     async def handle(self, msg: dict):
         t = msg.get("type")
@@ -89,10 +89,6 @@ class SwarmDaemon:
             #     except asyncio.CancelledError:
             #         pass
 
-            if self.tracker is not None:
-                await self.tracker.stop()
-                self.tracker = None
-                self.robot.set_tracking(None)
             await self.robot.stop()
             await self.robot.top_led(0, 0, 0)
 
@@ -211,20 +207,42 @@ class SwarmDaemon:
             }
 
         name = msg["name"]
-        config = msg.get("config", {})
+        config = msg.get(
+            "config",
+            {}
+        )
 
-        tracking_cfg = config.get("tracking")
-        if tracking_cfg is not None:
-            self.tracker = OptitrackTracker(
-                server=tracking_cfg["host"],
-                mapping=tracking_cfg["mapping"],
-            )
-            await self.tracker.start()
-            self.robot.set_tracking(self.tracker)
+        experiment_cfg = (
+            self.project_manager
+            .project
+            .experiment_config(name)
+        )
+
+        if experiment_cfg.tracking:
+            if self.tracker is None:
+                tracking_config = (
+                    self.project_manager
+                    .project
+                    .tracking
+                )
+
+                if tracking_config is None:
+                    return {
+                        "type": "error",
+                        "error": (
+                            "Experiment requires tracking "
+                            "but project has no tracking config"
+                        ),
+                    }
+
+                await self.tracker.start(
+                    tracking_config
+                )
+            self.robot.tracker = self.tracker
         else:
-            self.robot.set_tracking(None)
+            self.robot.tracker = None
 
-        experiment_cls = self.project_manager.experiment(name)
+        experiment_cls = experiment_cfg.cls
 
         self.experiment = experiment_cls(
             robot=self.robot,

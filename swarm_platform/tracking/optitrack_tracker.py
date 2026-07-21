@@ -1,95 +1,129 @@
-from __future__ import annotations
-
 import asyncio
+import threading
 
 import natnet
-from natnet.comms import TimestampAndLatency
-from natnet.protocol.MocapFrameMessage import (
-    LabelledMarker,
-    RigidBody,
-)
 
-from ..robot.pose import Pose
+from .pose import Pose
 
 
-class OptitrackTracker():
+class OptitrackTracker:
 
     def __init__(
         self,
-        server: str,
-        hostname_to_rigid_body: dict[str, int],
+        host: str,
+        hostname_map: dict[str, str],
     ):
-        self.server = server
-        self.hostname_to_rigid_body = hostname_to_rigid_body
+        self.host = host
+        self.hostname_map = hostname_map
 
         self.client = None
-        self.task = None
 
-        self._poses: dict[str, Pose] = {}
-        self.timestamp = None
+        self.robot_ids = {}
+
+        self.latest_poses = {}
+
+        self.running = False
+        self.thread = None
+
 
     async def start(self):
 
-        if self.client is not None:
-            return
-
         self.client = natnet.Client.connect(
-            self.server,
+            self.host,
             timeout=10,
         )
 
-        self.client.set_callback(self._callback)
+        print("OptiTrack connected")
 
-        self.task = asyncio.create_task(
-            asyncio.to_thread(self.client.spin)
+        self._build_mapping()
+
+        self.client.set_callback(
+            self._callback
         )
 
-    async def stop(self):
+        self.running = True
 
-        if self.client is None:
-            return
+        self.thread = threading.Thread(
+            target=self._spin,
+            daemon=True,
+        )
 
-        self.client.stop()
+        self.thread.start()
 
-        if self.task is not None:
-            await self.task
-            self.task = None
 
-        self.client = None
+    def _build_mapping(self):
 
-    async def pose(self, hostname: str) -> Pose | None:
-        return self._poses.get(hostname)
+        definitions = self.client._model_definitions
 
-    async def poses(self) -> dict[str, Pose]:
-        return dict(self._poses)
+        names_to_ids = {
+            rb.name: rb.id_
+            for rb in definitions
+            if hasattr(rb, "id_")
+        }
+
+        print("Rigid bodies:")
+        print(names_to_ids)
+
+        for hostname, rigid_name in self.hostname_map.items():
+
+            if rigid_name not in names_to_ids:
+                raise RuntimeError(
+                    f"Rigid body '{rigid_name}' "
+                    f"for {hostname} not found"
+                )
+
+            self.robot_ids[hostname] = (
+                names_to_ids[rigid_name]
+            )
+
+        print(
+            "Robot mapping:",
+            self.robot_ids
+        )
+
+
+    def _spin(self):
+
+        while self.running:
+            self.client.spin()
+
 
     def _callback(
         self,
-        rigid_bodies: list[RigidBody],
-        markers: list[LabelledMarker],
-        timing: TimestampAndLatency,
+        rigid_bodies,
+        markers,
+        timing,
     ):
 
-        self.timestamp = timing.timestamp
+        for rb in rigid_bodies:
 
-        lookup = {
-            rb.id_: rb
-            for rb in rigid_bodies
-        }
+            for hostname, rb_id in self.robot_ids.items():
 
-        for hostname, rigid_body_id in self.hostname_to_rigid_body.items():
+                if rb.id_ == rb_id:
 
-            rb = lookup.get(rigid_body_id)
+                    self.latest_poses[hostname] = Pose(
+                        position=rb.position,
+                        orientation=rb.orientation,
+                    )
 
-            if rb is None:
-                continue
 
-            self._poses[hostname] = Pose(
-                x=rb.position.x,
-                y=rb.position.y,
-                z=rb.position.z,
-                qx=rb.orientation.x,
-                qy=rb.orientation.y,
-                qz=rb.orientation.z,
-                qw=rb.orientation.w,
-            )
+    async def get_pose(
+        self,
+        hostname: str,
+    ):
+
+        return self.latest_poses.get(
+            hostname
+        )
+
+
+    async def get_all_poses(self):
+
+        return dict(
+            self.latest_poses
+        )
+
+
+    async def stop(self):
+
+        self.running = False
