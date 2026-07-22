@@ -331,27 +331,30 @@ class SwarmDaemon:
                         msg["session_id"],
                         delete=msg.get("delete", False),
                     )
+                    # Important:
+                    # do not send a normal response afterwards
                     continue
-
                 response = await self.handle(msg)
-
+                writer.write(
+                    (encode(response) + "\n").encode()
+                )
+                await writer.drain()
             except Exception:
                 import traceback
                 traceback.print_exc()
 
-                response = {
+                error = {
                     "type": "error",
                     "error": "internal_error",
                 }
 
-                writer.write((encode(response) + "\n").encode())
+                writer.write(
+                    (encode(error) + "\n").encode()
+                )
                 await writer.drain()
 
-                if getattr(self, "_restart_requested", False):
-                    os._exit(0)
-
-            writer.close()
-            await writer.wait_closed()
+        writer.close()
+        await writer.wait_closed()
 
     # ---------------------------
     # MAIN RUN LOOP
