@@ -102,7 +102,6 @@ class SwarmClient:
         output_dir,
         delete_remote=True,
     ):
-
         robots = await self.list_robots()
 
         output_dir.mkdir(
@@ -111,6 +110,9 @@ class SwarmClient:
         )
 
         tasks = []
+
+        if hosts == []:
+            hosts = robots
 
         for hostname in hosts:
 
@@ -133,6 +135,8 @@ class SwarmClient:
                 )
             )
 
+        print("Collecting from:")
+        print(hosts)
         await asyncio.gather(
             *tasks
         )
@@ -184,9 +188,14 @@ class SwarmClient:
                     buffer.extend(chunk)
                 elif msg_type == "logs_end":
                     break
+                elif msg_type == "error":
+                    raise RuntimeError(
+                        f"{robot['ip']} returned error: {message.get('error')}"
+                    )
+
                 else:
                     raise RuntimeError(
-                        f"Unexpected message type {msg_type}"
+                        f"Unexpected message type {msg_type}: {message}"
                     )
             destination.mkdir(
                 parents=True,
