@@ -190,8 +190,6 @@ class SwarmDaemon:
                 for hostname, data in msg["poses"].items()
             }
 
-            print("in tracking_update handle: ", self.robot.global_poses)
-
             return {
                 "type": "tracking_updated"
             }
