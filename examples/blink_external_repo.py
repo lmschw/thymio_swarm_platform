@@ -5,7 +5,7 @@ from swarm_platform.controller.client import SwarmClient
 async def main():
 
     client = SwarmClient("10.15.2.63")
-    hosts = ["thymio-18"]
+    hosts = []
 
     #await save_robot_info_to_csv(client)
 
@@ -55,7 +55,7 @@ async def main():
     await session.collect_logs()
 
     # print("Deleting logs...")
-    await session.delete_logs()
+    #await session.delete_logs()
 
     print("Done.")
 
