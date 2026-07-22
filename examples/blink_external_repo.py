@@ -1,7 +1,6 @@
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
-from swarm_platform.utils.utils import save_robot_info_to_csv
 
 async def main():
 

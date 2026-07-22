@@ -97,6 +97,35 @@ class SwarmClient:
 
     async def collect_logs(
         self,
+        session_id,
+        hosts,
+        output_dir,
+        delete_remote=True,
+    ):
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        robots = await self.list_robots()
+
+        for hostname in hosts:
+
+            robot = robots.get(hostname)
+
+            if robot is None:
+                print(f"{hostname} not connected")
+                continue
+
+            await self._collect_logs_from_robot(
+                robot,
+                session_id,
+                output_dir,
+                delete_remote,
+            )
+
+    async def _collect_logs_from_robot(
+        self,
         robot,
         session_id,
         destination,
