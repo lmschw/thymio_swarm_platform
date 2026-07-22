@@ -86,6 +86,7 @@ class OptitrackClient:
             for rb in self.client._model_definitions
             if hasattr(rb, "id_")
         }
+        print(names)
         for hostname, rigid_name in self.hostname_map.items():
             if rigid_name not in names:
                 raise RuntimeError(

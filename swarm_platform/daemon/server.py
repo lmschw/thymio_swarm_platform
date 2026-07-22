@@ -418,8 +418,11 @@ class SwarmDaemon:
             shutil.rmtree(log_dir)
 
         return {
-            "filename": f"{session_id}.zip",
-            "content": buffer.getvalue(),
+            "type": "logs",
+            "filename": f"{socket.gethostname()}.zip",
+            "content": base64.b64encode(
+                buffer.getvalue()
+            ).decode(),
         }
 
     async def stream_logs(
