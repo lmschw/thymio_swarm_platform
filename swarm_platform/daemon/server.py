@@ -406,7 +406,7 @@ class SwarmDaemon:
         return {
             "type": "logs",
             "filename": f"{socket.gethostname()}.zip",
-            "data": buffer.getvalue(),   # <-- bytes
+            "content": buffer.getvalue(),   # <-- bytes
         }
     
     async def stream_logs(
@@ -415,6 +415,7 @@ class SwarmDaemon:
         session_id,
         delete=False,
     ):
+
         result = await self.collect_logs(
             session_id,
             delete=delete,
@@ -446,8 +447,9 @@ class SwarmDaemon:
 
             return
 
+
         filename = result["filename"]
-        data = result["data"] 
+        data = result["content"]     # bytes now
 
         CHUNK_SIZE = 32 * 1024
 
@@ -482,9 +484,7 @@ class SwarmDaemon:
                     encode({
                         "type": "logs_chunk",
                         "index": index,
-                        "data": base64.b64encode(
-                            chunk
-                        ).decode(),
+                        "data": base64.b64encode(chunk).decode(),
                     })
                     + "\n"
                 ).encode()
@@ -501,4 +501,5 @@ class SwarmDaemon:
                 + "\n"
             ).encode()
         )
+
         await writer.drain()
