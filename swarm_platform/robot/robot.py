@@ -13,6 +13,7 @@ class Robot:
         self.connection = ThymioConnection()
         self.hostname = socket.gethostname()
         self.tracker = tracker
+        self.global_poses = {}
 
     # Context manager
     async def __aenter__(self):
@@ -122,12 +123,11 @@ class Robot:
         return int(self.connection.node.var.get("prox.comm.rx"))
     
     async def get_global_pose(self):
-        print("in get_global_pose")
-        poses = self.tracker.global_poses
-        print(poses)
+        print("in get_global_pose: ", poses)
+        poses = self.global_poses
         return poses.get(self.hostname)
 
     async def get_all_global_poses(self):
         return dict(
-            self.tracker.global_poses
+            self.global_poses
         )
