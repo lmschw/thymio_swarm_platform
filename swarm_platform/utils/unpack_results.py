@@ -4,47 +4,91 @@ import zipfile
 import pandas as pd
 
 
-def unpack_results(results_dir):
+def extract_robot_logs(zip_dir, output_dir):
     """
-    Extract every .zip file in a results directory.
+    Extract all robot zip files into output_dir.
 
-    Parameters
-    ----------
-    results_dir : str | Path
-        Session results directory.
+    Expected:
+        zip_dir/
+            thymio-18.zip
+            thymio-19.zip
+            ...
 
-    Returns
-    -------
-    Path
-        Directory containing the extracted robot folders.
+    Produces:
+        output_dir/
+            thymio-18/
+                thymio-18.csv
+            thymio-19/
+                thymio-19.csv
     """
-    results_dir = Path(results_dir)
 
-    for zip_path in results_dir.glob("*.zip"):
-        extract_dir = results_dir / zip_path.stem
-        extract_dir.mkdir(exist_ok=True)
+    zip_dir = Path(zip_dir)
+    output_dir = Path(output_dir)
 
-        with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(extract_dir)
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    return results_dir
+    for robot_zip in zip_dir.glob("*.zip"):
+
+        robot_name = robot_zip.stem
+
+        robot_dir = output_dir / robot_name
+
+        robot_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        with zipfile.ZipFile(robot_zip, "r") as z:
+            z.extractall(robot_dir)
 
 
 def aggregate_csvs(root_dir, output_file=None):
-    root = Path(root_dir)
+    """
+    Aggregate CSV files from robot directories.
+
+    Hostname is inferred from the CSV filename.
+    Empty CSV files are skipped.
+    """
+
+    root_dir = Path(root_dir)
 
     dfs = []
+    skipped = []
 
-    for csv_file in root.rglob("*.csv"):
-        if output_file is not None and csv_file == Path(output_file):
+    for csv_file in root_dir.rglob("*.csv"):
+
+        if (
+            output_file is not None
+            and csv_file.resolve() == Path(output_file).resolve()
+        ):
             continue
-        df = pd.read_csv(csv_file)
+
+        try:
+            df = pd.read_csv(csv_file)
+
+        except pd.errors.EmptyDataError:
+            skipped.append(csv_file)
+            continue
+
+        if df.empty:
+            skipped.append(csv_file)
+            continue
+
         df["hostname"] = csv_file.stem
+
         dfs.append(df)
+
+    if skipped:
+        print("Skipped empty CSV files:")
+        for f in skipped:
+            print(f"  {f}")
 
     if not dfs:
         raise ValueError(
-            f"No CSV files found under {root}"
+            f"No valid CSV files found under {root_dir}"
         )
 
     combined = pd.concat(
@@ -61,16 +105,22 @@ def aggregate_csvs(root_dir, output_file=None):
     return combined
 
 
-def unpack_and_aggregate(zip_path, output_dir):
-    zip_path = Path(zip_path)
+def unpack_and_aggregate(zip_dir, output_dir):
+    """
+    Extract robot logs and create aggregated CSV.
+    """
+
+    zip_dir = Path(zip_dir)
     output_dir = Path(output_dir)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    extract_dir = output_dir / "extracted"
 
-    with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall(output_dir)
+    extract_robot_logs(
+        zip_dir,
+        extract_dir,
+    )
 
     return aggregate_csvs(
-        output_dir,
+        extract_dir,
         output_dir / "aggregated.csv",
     )

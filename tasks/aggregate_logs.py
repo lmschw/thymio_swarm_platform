@@ -10,11 +10,11 @@ from swarm_platform.utils.unpack_results import (
 async def main():
 
     if len(sys.argv) != 3:
-        print("Usage:")
         print(
+            "Usage:\n"
             "    uv run ./tasks/aggregate_logs.py "
-            "./results/session.zip "
-            "./results/session"
+            "./results/session "
+            "./results/session/processed"
         )
         return
 
