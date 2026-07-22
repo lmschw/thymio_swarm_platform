@@ -319,6 +319,7 @@ class SwarmDaemon:
     async def _handle_connection(self, reader, writer):
         while True:
             data = await reader.readline()
+
             if not data:
                 break
 
@@ -331,14 +332,15 @@ class SwarmDaemon:
                         msg["session_id"],
                         delete=msg.get("delete", False),
                     )
-                    # Important:
-                    # do not send a normal response afterwards
                     continue
+
                 response = await self.handle(msg)
+
                 writer.write(
                     (encode(response) + "\n").encode()
                 )
                 await writer.drain()
+
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -381,6 +383,7 @@ class SwarmDaemon:
 
 
     async def collect_logs(self, session_id, delete=False):
+        print("Collecting logs.")
         log_dir = Path("logs") / session_id
 
         if not log_dir.exists():
