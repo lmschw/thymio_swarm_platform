@@ -95,38 +95,70 @@ class SwarmClient:
         for robot in robots.values():
             await self.send(robot, message)
 
-    async def collect_logs(self, session_id, hosts, output_dir, delete_remote=False):
-        robots = await self.list_robots()
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        for robot_id, robot in robots.items():
-            response = await self.send(
-                robot,
-                {
-                    "type": "collect_logs",
-                    "session_id": session_id,
-                    "hosts": hosts,
-                    "delete": delete_remote,
-                },
+    async def collect_logs(
+        self,
+        robot,
+        session_id,
+        destination,
+        delete=False,
+    ):
+        reader, writer = await asyncio.open_connection(
+            robot["ip"],
+            robot["port"],
+        )
+        try:
+            request = {
+                "type": "collect_logs",
+                "session_id": session_id,
+                "delete": delete,
+            }
+            writer.write(
+                (json.dumps(request) + "\n").encode()
             )
-
-            if response.get("type") == "error":
-                print(f"[{robot_id}] {response['error']}")
-                continue
-
-            content = response.get("content")
-
-            if content is None:
-                if hosts == [] or robot_id in hosts:
-                    print(f"[{robot_id}] No logs.")
-                continue
-
-            data = base64.b64decode(content)
-            destination = output_dir / robot_id
-            destination.mkdir(parents=True, exist_ok=True)
-            with zipfile.ZipFile(io.BytesIO(data)) as archive:
-                archive.extractall(destination)
+            await writer.drain()
+            filename = None
+            buffer = bytearray()
+            while True:
+                line = await reader.readline()
+                if not line:
+                    raise RuntimeError(
+                        "Connection closed while receiving log."
+                    )
+                message = json.loads(line.decode())
+                msg_type = message["type"]
+                if msg_type == "logs_begin":
+                    filename = message["filename"]
+                    if filename is None:
+                        return
+                    print(
+                        f"Receiving {filename} "
+                        f"({message['size']} bytes, "
+                        f"{message['chunks']} chunks)"
+                    )
+                elif msg_type == "logs_chunk":
+                    chunk = base64.b64decode(
+                        message["data"]
+                    )
+                    buffer.extend(chunk)
+                elif msg_type == "logs_end":
+                    break
+                else:
+                    raise RuntimeError(
+                        f"Unexpected message type {msg_type}"
+                    )
+            destination.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            path = destination / filename
+            with open(path, "wb") as f:
+                f.write(buffer)
+            print(
+                f"Saved log to {path}"
+            )
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
     async def delete_logs(self, session_id, hosts):
         return await self.broadcast(

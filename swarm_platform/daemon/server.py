@@ -337,7 +337,21 @@ class SwarmDaemon:
             msg = decode(data.decode())
 
             try:
-                response = await self.handle(msg)
+                if msg.get("type") == "collect_logs":
+                    await self.stream_logs(
+                        writer,
+                        msg["session_id"],
+                        delete=msg.get("delete", False),
+                    )
+                else:
+                    response = await self.handle(msg)
+                    writer.write(
+                        (
+                            encode(response)
+                            + "\n"
+                        ).encode()
+                    )
+                    await writer.drain()
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -383,29 +397,114 @@ class SwarmDaemon:
     async def collect_logs(self, session_id, delete=False):
         log_dir = Path("logs") / session_id
 
-        print(f"[COLLECT LOGS] session_id={session_id} log_dir={log_dir} delete={delete}")
-
         if not log_dir.exists():
-            print(f"[COLLECT LOGS] log_dir does not exist: {log_dir}")
-            return {
-                "type": "logs",
-                "content": None,
-            }
+            return None
 
         buffer = io.BytesIO()
 
-        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
+        with zipfile.ZipFile(
+            buffer,
+            "w",
+            zipfile.ZIP_DEFLATED,
+        ) as z:
             for file in log_dir.rglob("*"):
                 if file.is_file():
-                    z.write(file, file.relative_to(log_dir))
+                    z.write(
+                        file,
+                        file.relative_to(log_dir),
+                    )
 
         if delete:
             shutil.rmtree(log_dir)
 
         return {
-            "type": "logs",
             "filename": f"{session_id}.zip",
-            "content": base64.b64encode(
-                buffer.getvalue()
-            ).decode(),
+            "content": buffer.getvalue(),
         }
+
+    async def stream_logs(
+        self,
+        writer,
+        session_id,
+        delete=False,
+    ):
+        result = await self.collect_logs(
+            session_id,
+            delete=delete,
+        )
+
+        if result is None:
+            writer.write(
+                (
+                    encode({
+                        "type": "logs_begin",
+                        "filename": None,
+                        "size": 0,
+                        "chunks": 0,
+                    })
+                    + "\n"
+                ).encode()
+            )
+            await writer.drain()
+
+            writer.write(
+                (
+                    encode({"type": "logs_end"})
+                    + "\n"
+                ).encode()
+            )
+            await writer.drain()
+            return
+
+        filename = result["filename"]
+        data = result["content"]
+
+        CHUNK_SIZE = 32 * 1024
+
+        num_chunks = (
+            len(data) + CHUNK_SIZE - 1
+        ) // CHUNK_SIZE
+
+        writer.write(
+            (
+                encode({
+                    "type": "logs_begin",
+                    "filename": filename,
+                    "size": len(data),
+                    "chunks": num_chunks,
+                })
+                + "\n"
+            ).encode()
+        )
+        await writer.drain()
+
+        for index in range(num_chunks):
+
+            start = index * CHUNK_SIZE
+            end = start + CHUNK_SIZE
+
+            chunk = data[start:end]
+
+            writer.write(
+                (
+                    encode({
+                        "type": "logs_chunk",
+                        "index": index,
+                        "data": base64.b64encode(chunk).decode(),
+                    })
+                    + "\n"
+                ).encode()
+            )
+
+            await writer.drain()
+
+        writer.write(
+            (
+                encode({
+                    "type": "logs_end",
+                })
+                + "\n"
+            ).encode()
+        )
+
+        await writer.drain()

@@ -53,10 +53,10 @@ async def main():
     await session.stop()
 
     # print("Collecting logs...")
-    # await session.collect_logs()
+    await session.collect_logs()
 
     # print("Deleting logs...")
-    # await session.delete_logs()
+    await session.delete_logs()
 
     print("Done.")
 
