@@ -348,10 +348,10 @@ class SwarmDaemon:
                     "error": "internal_error",
                 }
 
-                writer.write(
-                    (encode(error) + "\n").encode()
-                )
-                await writer.drain()
+            writer.write(
+                (encode(error) + "\n").encode()
+            )
+            await writer.drain()
 
         writer.close()
         await writer.wait_closed()
@@ -447,7 +447,7 @@ class SwarmDaemon:
             return
 
         filename = result["filename"]
-        data = result["data"]   # <-- bytes
+        data = result["content"]   # <-- bytes
 
         CHUNK_SIZE = 32 * 1024
 
@@ -487,7 +487,7 @@ class SwarmDaemon:
                     encode({
                         "type": "logs_chunk",
                         "index": index,
-                        "data": base64.b64encode(chunk).decode(),
+                        "content": base64.b64encode(chunk).decode(),
                     })
                     + "\n"
                 ).encode()
