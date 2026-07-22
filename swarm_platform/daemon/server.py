@@ -146,7 +146,7 @@ class SwarmDaemon:
                 "type": "code_updated"
             }
         
-        if t == "delete_log":
+        if t == "delete_logs":
             try:
                 self.log_manager.delete(msg["session_id"])
                 return {
