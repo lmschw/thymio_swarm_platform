@@ -406,9 +406,9 @@ class SwarmDaemon:
         return {
             "type": "logs",
             "filename": f"{socket.gethostname()}.zip",
-            "data": buffer.getvalue(),   # <-- raw bytes
+            "content": buffer.getvalue(),   # <-- bytes
         }
-    
+
     async def stream_logs(
         self,
         writer,
@@ -473,6 +473,14 @@ class SwarmDaemon:
             end = start + CHUNK_SIZE
 
             chunk = data[start:end]
+
+            print(
+                "[STREAM DEBUG]",
+                type(data),
+                type(chunk),
+                repr(chunk[:20]),
+                flush=True,
+            )
 
             writer.write(
                 (
