@@ -406,7 +406,7 @@ class SwarmDaemon:
         return {
             "type": "logs",
             "filename": f"{socket.gethostname()}.zip",
-            "content": buffer.getvalue(),   # <-- RAW BYTES
+            "data": buffer.getvalue(),   # <-- bytes
         }
     
     async def stream_logs(
@@ -447,7 +447,7 @@ class SwarmDaemon:
             return
 
         filename = result["filename"]
-        data = result["content"]   # bytes
+        data = result["data"] 
 
         CHUNK_SIZE = 32 * 1024
 
