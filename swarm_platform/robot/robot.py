@@ -34,10 +34,21 @@ class Robot:
     async def disconnect(self):
         await self.connection.disconnect()
 
+    async def _set_variables(self, var_dict, timeout=1.0):
+        try:
+            await asyncio.wait_for(
+                self.connection.node.set_variables(var_dict),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            raise RuntimeError(
+                f"Timed out waiting for ack on set_variables({var_dict})"
+            )
+
     # Motors
     async def drive(self, left: int, right: int):
 
-        await self.connection.node.set_variables({
+        await self._set_variables({
             "motor.left.target": [int(left)],
             "motor.right.target": [int(right)],
         })
@@ -47,7 +58,7 @@ class Robot:
 
     # LEDs
     async def top_led(self, r: int, g: int, b: int):
-        await self.connection.node.set_variables({
+        await self._set_variables({
             "leds.top": [int(r), int(g), int(b)]
         })
 
@@ -112,7 +123,7 @@ class Robot:
         await self.top_led(*command.top_led)
 
     async def send(self, value: int):
-        await self.connection.node.set_variables({
+        await self._set_variables({
             "prox.comm.tx": [int(value)]
         })
 
