@@ -145,18 +145,6 @@ class SwarmDaemon:
             return {
                 "type": "code_updated"
             }
-            
-        if t == "collect_logs":
-            try:
-                return await self.collect_logs(
-                    msg["session_id"],
-                    delete=msg.get("delete", False),
-                )
-            except Exception as e:
-                return {
-                    "type": "error",
-                    "error": str(e),
-                }
         
         if t == "delete_log":
             try:
@@ -343,15 +331,10 @@ class SwarmDaemon:
                         msg["session_id"],
                         delete=msg.get("delete", False),
                     )
-                else:
-                    response = await self.handle(msg)
-                    writer.write(
-                        (
-                            encode(response)
-                            + "\n"
-                        ).encode()
-                    )
-                    await writer.drain()
+                    continue
+
+                response = await self.handle(msg)
+
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -361,14 +344,14 @@ class SwarmDaemon:
                     "error": "internal_error",
                 }
 
-            writer.write((encode(response) + "\n").encode())
-            await writer.drain()
+                writer.write((encode(response) + "\n").encode())
+                await writer.drain()
 
-            if getattr(self, "_restart_requested", False):
-                os._exit(0)
+                if getattr(self, "_restart_requested", False):
+                    os._exit(0)
 
-        writer.close()
-        await writer.wait_closed()
+            writer.close()
+            await writer.wait_closed()
 
     # ---------------------------
     # MAIN RUN LOOP

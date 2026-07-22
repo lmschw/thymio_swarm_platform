@@ -103,43 +103,39 @@ class SwarmClient:
         delete_remote=True,
     ):
 
+        robots = await self.list_robots()
+
         output_dir.mkdir(
             parents=True,
             exist_ok=True,
         )
 
-        responses = await self.broadcast({
-            "type": "collect_logs",
-            "session_id": session_id,
-            "hosts": hosts,
-            "delete": delete_remote,
-        })
+        tasks = []
 
-        for hostname, response in responses.items():
+        for hostname in hosts:
 
-            if response.get("type") != "logs":
+            robot = robots.get(hostname)
+
+            if robot is None:
                 print(
-                    f"{hostname}: no logs returned"
+                    f"{hostname}: not found"
                 )
                 continue
 
-            filename = response.get(
-                "filename",
-                f"{hostname}.zip",
-            )
+            destination = output_dir
 
-            path = output_dir / filename
-
-            print(
-                f"Writing logs: {path}"
-            )
-
-            with open(path, "wb") as f:
-                f.write(
-                    base64.b64decode(
-                        response["content"]
-                    )
+            tasks.append(
+                self._collect_logs_from_robot(
+                    robot,
+                    session_id,
+                    destination,
+                    delete_remote,
                 )
+            )
+
+        await asyncio.gather(
+            *tasks
+        )
 
     async def _collect_logs_from_robot(
         self,
