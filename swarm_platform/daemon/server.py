@@ -341,6 +341,9 @@ class SwarmDaemon:
                 )
                 await writer.drain()
 
+                if self._restart_requested:
+                    os._exit(0)
+
             except Exception:
                 import traceback
                 traceback.print_exc()
