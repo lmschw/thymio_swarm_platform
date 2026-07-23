@@ -38,6 +38,7 @@ class SwarmDaemon:
         self.log_manager = LogManager()
         self.logger = None
         self.global_poses = {}
+        self._restart_requested = False
 
     async def handle(self, msg: dict):
         t = msg.get("type")
