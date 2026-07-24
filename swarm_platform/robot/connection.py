@@ -84,6 +84,27 @@ class ThymioConnection:
             "prox.comm.enable": [1],
         })
 
+        self.client.process_waiting_messages()
+
+        print(
+            "comm vars:",
+            self.node.var.get("prox.comm.tx"),
+            self.node.var.get("prox.comm.rx"),
+            self.node.var.get("prox.comm.rx._intensities"),
+        )
+
+        await self.node.set_variables({
+            "prox.comm.tx": [1],
+        })
+
+        print(
+            "comm vars:",
+            self.node.var.get("prox.comm.tx"),
+            self.node.var.get("prox.comm.rx"),
+            self.node.var.get("prox.comm.rx._intensities"),
+        )
+        
+
         self.running = True
         #self.poll_task = asyncio.create_task(self._poll())
 
