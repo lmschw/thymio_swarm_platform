@@ -71,13 +71,6 @@ class ThymioConnection:
 
         await self.node.watch(variables=True, events=True)
 
-        await asyncio.sleep(0.2)
-        self.client.process_waiting_messages()
-
-        for name in sorted(self.node.var):
-            if "comm" in name:
-                print(name, self.node.var[name])
-
         # IMPORTANT: give TDM time to publish first sensor frame
         for _ in range(50):
             self.client.process_waiting_messages()
