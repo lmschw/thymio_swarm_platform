@@ -128,6 +128,10 @@ class Robot:
             "prox.comm.tx": [int(value)]
         })
 
+        await self.node.send_events({
+            "prox.comm": [int(value)+1]
+        })
+
         print(
             "TX set to",
             self.connection.node.var.get("prox.comm.tx"),
