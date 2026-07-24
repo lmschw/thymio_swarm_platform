@@ -128,7 +128,7 @@ class Robot:
             "prox.comm.tx": [int(value)]
         })
 
-        await self.node.send_events({
+        await self.connection.node.send_events({
             "prox.comm": [int(value)+1]
         })
 
