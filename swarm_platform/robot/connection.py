@@ -93,6 +93,12 @@ class ThymioConnection:
 
             await asyncio.sleep(0.05)
 
+
+        def on_event(node, event_name, event_data):
+            print("EVENT:", event_name, event_data)
+
+
+        self.node.add_event_received_listener(on_event)
         await self.node.set_variables({
             "prox.comm.enable": [1],
         })
