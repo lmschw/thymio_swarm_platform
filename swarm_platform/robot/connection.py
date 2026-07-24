@@ -83,8 +83,9 @@ class ThymioConnection:
         await self.node.set_variables({
             "prox.comm.enable": [1],
         })
+
         self.running = True
-        self.poll_task = asyncio.create_task(self._poll())
+        #self.poll_task = asyncio.create_task(self._poll())
 
     async def disconnect(self):
 
