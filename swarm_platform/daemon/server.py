@@ -14,7 +14,7 @@ from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
 from swarm_platform.daemon.logger import SessionLogger
 from swarm_platform.daemon.log_manager import LogManager
-from swarm_platform.tracking.optitrack_tracker import OptitrackTracker
+from swarm_platform.tracking.pose import Pose
 
 class SwarmDaemon:
 
@@ -30,13 +30,15 @@ class SwarmDaemon:
             Path("active_project")
         )
 
-        self.robot = Robot()
+        self.robot = Robot(tracker=self)
         self.experiment = None
         self.experiment_task = None
         self.running_experiment = False
         self.active_session = None
         self.log_manager = LogManager()
         self.logger = None
+        self.global_poses = {}
+        self._restart_requested = False
 
     async def handle(self, msg: dict):
         t = msg.get("type")
@@ -90,10 +92,6 @@ class SwarmDaemon:
             #     except asyncio.CancelledError:
             #         pass
 
-            if self.tracker is not None:
-                await self.tracker.stop()
-                self.tracker = None
-                self.robot.set_tracking(None)
             await self.robot.stop()
             await self.robot.top_led(0, 0, 0)
 
@@ -149,20 +147,8 @@ class SwarmDaemon:
             return {
                 "type": "code_updated"
             }
-            
-        if t == "collect_logs":
-            try:
-                return await self.collect_logs(
-                    msg["session_id"],
-                    delete=msg.get("delete", False),
-                )
-            except Exception as e:
-                return {
-                    "type": "error",
-                    "error": str(e),
-                }
         
-        if t == "delete_log":
+        if t == "delete_logs":
             try:
                 self.log_manager.delete(msg["session_id"])
                 return {
@@ -182,6 +168,20 @@ class SwarmDaemon:
                 await self.robot.top_led(0, 0, 0)
             return {
                 "type": "identified"
+            }
+        
+        if t == "tracking_update":
+
+            self.robot.global_poses = {
+                hostname: Pose(
+                    position=tuple(data["position"]),
+                    orientation=tuple(data["orientation"]),
+                )
+                for hostname, data in msg["poses"].items()
+            }
+
+            return {
+                "type": "tracking_updated"
             }
 
         print(f"[DAEMON] unknown message type: {t}", flush=True)
@@ -212,20 +212,18 @@ class SwarmDaemon:
             }
 
         name = msg["name"]
-        config = msg.get("config", {})
+        config = msg.get(
+            "config",
+            {}
+        )
 
-        tracking_cfg = config.get("tracking")
-        if tracking_cfg is not None:
-            self.tracker = OptitrackTracker(
-                server=tracking_cfg["host"],
-                mapping=tracking_cfg["mapping"],
-            )
-            await self.tracker.start()
-            self.robot.set_tracking(self.tracker)
-        else:
-            self.robot.set_tracking(None)
+        experiment_cfg = (
+            self.project_manager
+            .project
+            .experiment_config(name)
+        )
 
-        experiment_cls = self.project_manager.experiment(name)
+        experiment_cls = experiment_cfg.cls
 
         self.experiment = experiment_cls(
             robot=self.robot,
@@ -323,27 +321,44 @@ class SwarmDaemon:
     async def _handle_connection(self, reader, writer):
         while True:
             data = await reader.readline()
+
             if not data:
                 break
 
             msg = decode(data.decode())
 
             try:
+                if msg.get("type") == "collect_logs":
+                    await self.stream_logs(
+                        writer,
+                        msg["session_id"],
+                        delete=msg.get("delete", False),
+                    )
+                    continue
+
                 response = await self.handle(msg)
+
+                writer.write(
+                    (encode(response) + "\n").encode()
+                )
+                await writer.drain()
+
+                if self._restart_requested:
+                    os._exit(0)
+
             except Exception:
                 import traceback
                 traceback.print_exc()
 
-                response = {
+                error = {
                     "type": "error",
                     "error": "internal_error",
                 }
 
-            writer.write((encode(response) + "\n").encode())
-            await writer.drain()
-
-            if getattr(self, "_restart_requested", False):
-                os._exit(0)
+                writer.write(
+                    (encode(error) + "\n").encode()
+                )
+                await writer.drain()
 
         writer.close()
         await writer.wait_closed()
@@ -373,31 +388,128 @@ class SwarmDaemon:
 
 
     async def collect_logs(self, session_id, delete=False):
+        print("Collecting logs.")
         log_dir = Path("logs") / session_id
 
-        print(f"[COLLECT LOGS] session_id={session_id} log_dir={log_dir} delete={delete}")
-
         if not log_dir.exists():
-            print(f"[COLLECT LOGS] log_dir does not exist: {log_dir}")
-            return {
-                "type": "logs",
-                "content": None,
-            }
+            return None
 
         buffer = io.BytesIO()
 
-        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
+        with zipfile.ZipFile(
+            buffer,
+            "w",
+            zipfile.ZIP_DEFLATED,
+        ) as z:
             for file in log_dir.rglob("*"):
                 if file.is_file():
-                    z.write(file, file.relative_to(log_dir))
+                    z.write(
+                        file,
+                        file.relative_to(log_dir),
+                    )
 
         if delete:
             shutil.rmtree(log_dir)
 
         return {
             "type": "logs",
-            "filename": f"{session_id}.zip",
-            "content": base64.b64encode(
-                buffer.getvalue()
-            ).decode(),
+            "filename": f"{socket.gethostname()}.zip",
+            "data": buffer.getvalue(),   # <-- bytes
         }
+
+    async def stream_logs(
+        self,
+        writer,
+        session_id,
+        delete=False,
+    ):
+        result = await self.collect_logs(
+            session_id,
+            delete=delete,
+        )
+
+        if result is None:
+            writer.write(
+                (
+                    encode({
+                        "type": "logs_begin",
+                        "filename": None,
+                        "size": 0,
+                        "chunks": 0,
+                    })
+                    + "\n"
+                ).encode()
+            )
+            await writer.drain()
+
+            writer.write(
+                (
+                    encode({
+                        "type": "logs_end"
+                    })
+                    + "\n"
+                ).encode()
+            )
+            await writer.drain()
+
+            return
+
+        filename = result["filename"]
+        data = result["data"]   # <-- bytes
+
+        CHUNK_SIZE = 32 * 1024
+
+        num_chunks = (
+            len(data) + CHUNK_SIZE - 1
+        ) // CHUNK_SIZE
+
+        writer.write(
+            (
+                encode({
+                    "type": "logs_begin",
+                    "filename": filename,
+                    "size": len(data),
+                    "chunks": num_chunks,
+                })
+                + "\n"
+            ).encode()
+        )
+        await writer.drain()
+
+        for index in range(num_chunks):
+            start = index * CHUNK_SIZE
+            end = start + CHUNK_SIZE
+
+            chunk = data[start:end]
+
+            print(
+                "[STREAM DEBUG]",
+                type(data),
+                type(chunk),
+                repr(chunk[:20]),
+                flush=True,
+            )
+
+            writer.write(
+                (
+                    encode({
+                        "type": "logs_chunk",
+                        "index": index,
+                        "data": base64.b64encode(chunk).decode(),
+                    })
+                    + "\n"
+                ).encode()
+            )
+
+            await writer.drain()
+
+        writer.write(
+            (
+                encode({
+                    "type": "logs_end",
+                })
+                + "\n"
+            ).encode()
+        )
+
+        await writer.drain()

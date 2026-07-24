@@ -1,52 +1,59 @@
-from pathlib import Path
 import importlib
 import yaml
 import sys
 
-from .exceptions import ProjectLoadError
-from .project import Project
+from pathlib import Path
+
+from .project import Project, ExperimentConfig
 
 
 class ProjectLoader:
+    def load(self, path: Path) -> Project:
+        # Make project modules importable
+        project_root = str(path)
 
-    MANIFEST = "swarm_project.yaml"
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
 
-    def load(self, directory: str | Path) -> Project:
+        yaml_path = path / "swarm_project.yaml"
 
-        directory = Path(directory)
-
-        manifest = directory / self.MANIFEST
-
-        if not manifest.exists():
-            raise ProjectLoadError(
-                f"No {self.MANIFEST} found in {directory}"
-            )
-
-        with manifest.open() as f:
+        with open(yaml_path, "r") as f:
             data = yaml.safe_load(f)
-
-        print(data)
-
-        if str(directory) not in sys.path:
-            sys.path.insert(0, str(directory))
 
         experiments = {}
 
-        for experiment_name, info in data["experiments"].items():
-            module_name, class_name = info["class"].rsplit(".", 1)
+        for experiment_name, info in data.get(
+            "experiments",
+            {}
+        ).items():
+            module_name, class_name = (
+                info["class"].rsplit(".", 1)
+            )
 
-            module = importlib.import_module(module_name)
-            experiment_cls = getattr(module, class_name)
+            module = importlib.import_module(
+                module_name
+            )
 
-            experiments[experiment_name] = {
-                "class": experiment_cls,
-                "tracking": info.get("tracking", False),
-            }
+            experiment_cls = getattr(
+                module,
+                class_name
+            )
+
+            experiments[experiment_name] = ExperimentConfig(
+                cls=experiment_cls,
+                tracking=info.get(
+                    "tracking",
+                    False
+                ),
+            )
 
         return Project(
             name=data["name"],
             version=data["version"],
-            path=directory,
+            path=path,
             experiments=experiments,
-            tracking=data.get("tracking"),
+            tracking=data.get(
+                "tracking",
+                None
+            ),
         )

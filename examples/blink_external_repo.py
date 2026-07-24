@@ -1,12 +1,11 @@
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
-from swarm_platform.utils.utils import save_robot_info_to_csv
 
 async def main():
 
     client = SwarmClient("10.15.2.63")
-    hosts = ["thymio-01"]
+    hosts = []
 
     #await save_robot_info_to_csv(client)
 
@@ -32,7 +31,9 @@ async def main():
 
     while True:
 
-        cmd = input("\n[p]ause  [r]esume  [s]top > ").strip().lower()
+        cmd = (await asyncio.get_event_loop().run_in_executor(
+            None, input, "\n[p]ause  [r]esume  [s]top > "
+        )).strip().lower()
 
         if cmd == "p":
             print("Pausing...")
@@ -51,10 +52,10 @@ async def main():
     await session.stop()
 
     # print("Collecting logs...")
-    # await session.collect_logs()
+    await session.collect_logs()
 
     # print("Deleting logs...")
-    # await session.delete_logs()
+    #await session.delete_logs()
 
     print("Done.")
 
