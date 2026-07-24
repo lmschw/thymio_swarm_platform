@@ -29,6 +29,9 @@ class Robot:
     # Connection
     async def connect(self):
         await self.connection.connect()
+        await self.connection.node.set_variables({
+            "prox.comm.enable": [1],
+        })
 
     async def disconnect(self):
         await self.connection.disconnect()

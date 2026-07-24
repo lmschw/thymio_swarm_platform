@@ -42,6 +42,7 @@ class SwarmDaemon:
         t = msg.get("type")
         hosts = msg.get("hosts")
         if hosts and len(hosts) > 0 and socket.gethostname() not in hosts:
+            print("not in hosts")
             return {"type": "Not applicable"}
         else:
             print(msg, flush=True)
