@@ -95,13 +95,15 @@ class ThymioConnection:
 
 
         def on_event(node, event_name, event_data):
-            print("EVENT:", event_name, event_data)
-
+            print(
+                "[EVENT]",
+                event_name,
+                event_data,
+                "rx=",
+                node.var.get("prox.comm.rx"),
+            )
 
         self.node.add_event_received_listener(on_event)
-        await self.node.set_variables({
-            "prox.comm.enable": [1],
-        })
 
         self.client.process_waiting_messages()
 

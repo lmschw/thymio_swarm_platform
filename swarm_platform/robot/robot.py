@@ -123,18 +123,25 @@ class Robot:
         await self.top_led(*command.top_led)
 
     async def send(self, value):
+        value = int(value)
+
         await self._set_variables({
             "prox.comm.enable": [1],
-            "prox.comm.tx": [int(value)]
         })
 
-        await self.connection.node.send_events({
-            "prox.comm": [int(value)+1]
+        await self._set_variables({
+            "prox.comm.tx": [value],
         })
+
+        self.connection.client.process_waiting_messages()
 
         print(
-            "TX set to",
-            self.connection.node.var.get("prox.comm.tx"),
+            "[COMM TX]",
+            "tx=", self.connection.node.var.get("prox.comm.tx"),
+            "enable=", self.connection.node.var.get("prox.comm.enable"),
+            "rx=", self.connection.node.var.get("prox.comm.rx"),
+            "payloads=", self.connection.node.var.get("prox.comm.rx._payloads"),
+            "intensities=", self.connection.node.var.get("prox.comm.rx._intensities"),
         )
 
     async def receive(self):
