@@ -80,6 +80,9 @@ class ThymioConnection:
 
             await asyncio.sleep(0.05)
 
+        await self.node.set_variables({
+            "prox.comm.enable": [1],
+        })
         self.running = True
         self.poll_task = asyncio.create_task(self._poll())
 
