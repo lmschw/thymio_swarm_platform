@@ -125,16 +125,21 @@ class Robot:
 
         await self.top_led(*command.top_led)
 
-    async def send(self, value: int):
+    async def send(self, value):
         await self._set_variables({
             "prox.comm.tx": [int(value)]
         })
 
+        print(
+            "TX set to",
+            self.connection.node.var.get("prox.comm.tx"),
+        )
+
     async def receive(self):
         await self.connection.process_messages()
-        if self.connection.node.var.get("prox.comm.rx") == 0:
-            return None
-        return int(self.connection.node.var.get("prox.comm.rx"))
+        rx = self.connection.node.var.get("prox.comm.rx")
+        print("RX =", rx)
+        return rx
     
     async def get_global_pose(self):
         poses = self.global_poses
