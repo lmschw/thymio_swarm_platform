@@ -139,6 +139,8 @@ class Robot:
         await self.connection.process_messages()
         rx = self.connection.node.var.get("prox.comm.rx")
         print("RX =", rx)
+        print("rx intensities", self.connection.node.var.get("prox.comm.rx._intensities"))
+        print("prox", self.connection.node.var.get("prox.horizontal"))
         return rx
     
     async def get_global_pose(self):
