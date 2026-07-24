@@ -78,9 +78,10 @@ class ThymioConnection:
 
         print("NODE DICT:", getattr(self.node, "__dict__", None), flush=True)
 
-        print("event description: ", self.node.event_description)
-
-        print("vm description: ", self.node.vm_description)
+        await self.node.watch(3)
+        await self.node.wait_for_variables()
+        print(self.node.event_description())
+        print(self.node.vm_description)
 
         # IMPORTANT: give TDM time to publish first sensor frame
         for _ in range(50):
