@@ -91,48 +91,10 @@ class ThymioConnection:
             if self.node.var.get("prox.horizontal") is not None:
                 break
 
-            await asyncio.sleep(0.05)
-
-
-        def on_event(node, event_name, event_data):
-            print(
-                "[EVENT]",
-                event_name,
-                event_data,
-                "rx=",
-                node.var.get("prox.comm.rx"),
-            )
-
-        self.node.add_event_received_listener(on_event)
-
-        self.client.process_waiting_messages()
-
-        print(
-            "comm vars:",
-            self.node.var.get("prox.comm.tx"),
-            self.node.var.get("prox.comm.rx"),
-            self.node.var.get("prox.comm.rx._intensities"),
-        )
-
-        await self.node.call_function(
-            "prox.comm.enable",
-            [1],
-        )
-
-        await self.node.set_variables({
-            "prox.comm.tx": [1],
-        })
-
-        print(
-            "comm vars:",
-            self.node.var.get("prox.comm.tx"),
-            self.node.var.get("prox.comm.rx"),
-            self.node.var.get("prox.comm.rx._intensities"),
-        )
-        
+            await asyncio.sleep(0.05) 
 
         self.running = True
-        #self.poll_task = asyncio.create_task(self._poll())
+        self.poll_task = asyncio.create_task(self._poll())
 
     async def disconnect(self):
 
