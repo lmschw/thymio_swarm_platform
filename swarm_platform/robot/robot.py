@@ -30,9 +30,21 @@ class Robot:
     # Connection
     async def connect(self):
         await self.connection.connect()
-        await self.connection.node.set_variables({
-            "prox.comm.enable": [1],
-        })
+        print("Variables:")
+        for k in sorted(self.connection.node.var):
+            if "prox.comm" in k:
+                print(k)
+
+        print("Events:")
+        print(self.connection.node.events)
+        try:
+            await self.connection.node.set_variables({
+                "prox.comm.enable": [1],
+            })
+            print("Enabled prox.comm")
+        except Exception as e:
+            print("Failed enabling prox.comm:", e)
+
 
     async def disconnect(self):
         await self.connection.disconnect()
