@@ -114,12 +114,9 @@ class ThymioConnection:
             self.node.var.get("prox.comm.rx._intensities"),
         )
 
-        print(
-            "FUNCTIONS:",
-            [
-                x for x in self.connection.node.vm_description["functions"]
-                if "comm" in x
-            ]
+        await self.node.call_function(
+            "prox.comm.enable",
+            [1],
         )
 
         await self.node.set_variables({
