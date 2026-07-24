@@ -57,7 +57,7 @@ class ThymioConnection:
 
         ensure_tdm_running()
 
-        self.client = ClientAsync(debug=3)
+        self.client = ClientAsync()
         self.client.__enter__()
 
         print("Waiting for stable node...")
@@ -77,6 +77,10 @@ class ThymioConnection:
         print("CLIENT DIR:", [x for x in dir(self.client) if "event" in x.lower()], flush=True)
 
         print("NODE DICT:", getattr(self.node, "__dict__", None), flush=True)
+
+        print("event description: ", self.node.event_description)
+
+        print("vm description: ", self.node.vm_description)
 
         # IMPORTANT: give TDM time to publish first sensor frame
         for _ in range(50):
