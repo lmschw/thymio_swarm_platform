@@ -124,6 +124,7 @@ class Robot:
 
     async def send(self, value):
         await self._set_variables({
+            "prox.comm.enable": [1],
             "prox.comm.tx": [int(value)]
         })
 
