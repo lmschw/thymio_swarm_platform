@@ -126,10 +126,6 @@ class Robot:
         value = int(value)
 
         await self._set_variables({
-            "prox.comm.enable": [1],
-        })
-
-        await self._set_variables({
             "prox.comm.tx": [value],
         })
 
@@ -138,7 +134,6 @@ class Robot:
         print(
             "[COMM TX]",
             "tx=", self.connection.node.var.get("prox.comm.tx"),
-            "enable=", self.connection.node.var.get("prox.comm.enable"),
             "rx=", self.connection.node.var.get("prox.comm.rx"),
             "payloads=", self.connection.node.var.get("prox.comm.rx._payloads"),
             "intensities=", self.connection.node.var.get("prox.comm.rx._intensities"),

@@ -71,6 +71,19 @@ class ThymioConnection:
 
         await self.node.watch(variables=True, events=True)
 
+        # prox.comm.enable is a native VM function, not a variable -- it
+        # must be invoked via compiled Aseba code, not set_variables().
+        error = await self.node.compile("call prox.comm.enable(1)")
+        if error is not None:
+            raise RobotConnectionError(
+                f"Failed to compile prox.comm.enable: {error}"
+            )
+        error = await self.node.run()
+        if error is not None:
+            raise RobotConnectionError(
+                f"Failed to run prox.comm.enable: {error}"
+            )
+
         print("NODE TYPE:", type(self.node), flush=True)
         print("NODE DIR:", [x for x in dir(self.node) if "event" in x.lower()], flush=True)
 
