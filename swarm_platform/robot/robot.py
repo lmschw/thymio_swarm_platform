@@ -131,21 +131,13 @@ class Robot:
 
         self.connection.client.process_waiting_messages()
 
-        print(
-            "[COMM TX]",
-            "tx=", self.connection.node.var.get("prox.comm.tx"),
-            "rx=", self.connection.node.var.get("prox.comm.rx"),
-            "payloads=", self.connection.node.var.get("prox.comm.rx._payloads"),
-            "intensities=", self.connection.node.var.get("prox.comm.rx._intensities"),
-        )
-
     async def receive(self):
         await self.connection.process_messages()
         rx = self.connection.node.var.get("prox.comm.rx")
-        print("RX =", rx)
-        print("rx intensities", self.connection.node.var.get("prox.comm.rx._intensities"))
-        print("prox", self.connection.node.var.get("prox.horizontal"))
-        return rx
+        intensities = self.connection.node.var.get("prox.comm.rx._intensities")
+        front_intensity = intensities[0] + intensities[1] + intensities[2] + intensities[3] + intensities[4]
+        rear_intensity = intensities[5] + intensities[6]
+        return rx, intensities, front_intensity, rear_intensity
     
     async def get_global_pose(self):
         poses = self.global_poses
