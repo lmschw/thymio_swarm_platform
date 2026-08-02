@@ -1,3 +1,14 @@
+"""Compute per-file and per-run mean/std statistics over result CSVs.
+
+Recursively reads every CSV file under ``results/``, computes the mean
+and standard deviation of each numeric column per file, and groups the
+per-file statistics into overall statistics per "run" (the top-level
+subdirectory of each CSV file under ``results/``, e.g. ``black-run``,
+``white-run``). Prints both summaries and writes them to
+``results_summary.csv`` (per-file) and ``run_summary.csv`` (per-run) in
+the current working directory.
+"""
+
 from pathlib import Path
 from collections import defaultdict
 import pandas as pd

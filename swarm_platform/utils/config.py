@@ -3,6 +3,15 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class RobotConfig:
+    """Physical and control parameters for a Thymio robot.
+
+    Attributes:
+        max_motor: Maximum motor speed value accepted by the robot.
+        wheel_radius: Wheel radius, in meters.
+        wheel_distance: Distance between the two wheels, in meters.
+        sensor_max: Maximum raw value reported by the proximity/ground sensors.
+        control_frequency: Frequency at which the control loop runs, in Hz.
+    """
 
     max_motor: int = 500
 

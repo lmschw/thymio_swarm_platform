@@ -4,6 +4,7 @@ import io
 import json
 import zipfile
 from pathlib import Path
+from typing import Any, Dict, List
 
 from swarm_platform.controller.project import Project
 
@@ -14,11 +15,14 @@ class SwarmClient:
     on the Raspberry Pi. Sends and retrieves messages as needed.
     """
 
-    def __init__(self, coordinator_ip: str, coordinator_port: int=9100):
-        """
-        Params:
-            - coordinator_ip [string]: the IP address of the coordinator instance that registers the pis
-            - coordinator_port [int]: the port of the coordinator instance that handles the communication
+    def __init__(self, coordinator_ip: str, coordinator_port: int = 9100) -> None:
+        """Initialize the client with the coordinator's address.
+
+        Args:
+            coordinator_ip: The IP address of the coordinator instance that
+                registers the pis.
+            coordinator_port: The port of the coordinator instance that
+                handles the communication.
         """
         self.coordinator_ip = coordinator_ip
         self.coordinator_port = coordinator_port
@@ -28,26 +32,26 @@ class SwarmClient:
         self.tracking_task = None
         self.tracking_verbose = False
 
-    def project(self, repository: str, hosts: list = []):
-        """
-        Creates the active project based on the project respository link and the hosts.
+    def project(self, repository: str, hosts: List[str] = []) -> Project:
+        """Create the active project based on the project repository link and the hosts.
 
-        Params:
-            - repository [string]: the link to the project repository to be cloned and run on all hosts
-            - hosts [list[string]] (optional): the hostnames of the pis that should create this project. 
-                                               Defaults to an empty list which corresponds to all available hosts.
+        Args:
+            repository: The link to the project repository to be cloned and
+                run on all hosts.
+            hosts: The hostnames of the pis that should create this project.
+                Defaults to an empty list which corresponds to all available
+                hosts.
 
-        Returns a Project instance.            
+        Returns:
+            A new Project instance wired up to this client.
         """
         return Project(self, repository, hosts)
 
-    async def list_robots(self):
-        """
-        Retrieves all available robots from the coordinator.
+    async def list_robots(self) -> Dict[str, Any]:
+        """Retrieve all robots currently registered with the coordinator.
 
-        Params: None.
-
-        Returns a list of all available robots.
+        Returns:
+            A dict mapping robot hostnames to their info (e.g. ip/port).
         """
         reader, writer = await asyncio.open_connection(
             self.coordinator_ip,
@@ -64,16 +68,22 @@ class SwarmClient:
 
         return response["robots"]
 
-    async def send(self, robot, message):
-        """
-        Sends a message to a single robot. Attempts to open the connection 10 times before failing.
+    async def send(self, robot: Dict[str, Any], message: Dict[str, Any]) -> Dict[str, Any]:
+        """Send a message to a single robot, retrying the connection if needed.
 
-        Params:
-            - robot (dict): a dictionary containing the ip and port of the robot
-            - message (dict): a dictonary containing the details of the message, including message type
+        Attempts to open the connection 10 times before failing, waiting
+        0.5s between attempts.
+
+        Args:
+            robot: A dict containing the ip and port of the robot.
+            message: A dict containing the details of the message,
+                including message type.
 
         Returns:
-            A dictionary with the response from the robot.
+            A dict with the response from the robot, or
+            {"type": "connection_closed"} if the connection closed before a
+            response arrived, or {"type": "error", "error": ...} if the
+            connection could not be established after all retries.
         """
         last_error = None
 
@@ -110,15 +120,16 @@ class SwarmClient:
             writer.close()
             await writer.wait_closed()
 
-    async def broadcast(self, message):
-        """
-        Broadcasts a message to all available robots.
+    async def broadcast(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """Broadcast a message to all available robots concurrently.
 
-        Params:
-            - message (dict): a dictonary containing the details of the message, including message type
+        Args:
+            message: A dict containing the details of the message,
+                including message type.
 
         Returns:
-            A dictionary containing the response for every robot by its hostname.
+            A dict containing the response for every robot, keyed by its
+            hostname.
         """
         robots = await self.list_robots()
 
@@ -137,30 +148,34 @@ class SwarmClient:
             )
         }
 
-    async def broadcast_tracking(self, message):
-        """
-        Broadcasts an update with tracking information to the robots.
+    async def broadcast_tracking(self, message: Dict[str, Any]) -> None:
+        """Broadcast a tracking update message to all available robots sequentially.
 
-        Params:
-            - message (dict): the dictionary containing the tracking information
-
-        Returns nothing.
+        Args:
+            message: The dict containing the tracking information.
         """
         robots = await self.list_robots()
         for robot in robots.values():
             await self.send(robot, message)
 
-    async def collect_logs(self, session_id, hosts, output_dir, delete_remote=True):
-        """
-        Collects the logs from all the robots and saves them as .zip files.
+    async def collect_logs(
+        self,
+        session_id: str,
+        hosts: List[str],
+        output_dir: Path,
+        delete_remote: bool = True,
+    ) -> None:
+        """Collect the logs from all the robots and save them as .zip files.
 
-        Params:
-            - session_id (string): The id of the current experiment session, can be set to anything at experiment creation
-            - hosts (list): A list of the hostnames of the target pis, should be left empty to target all robots.
-            - output_dir (string): the path to the location where the logs should be stored
-            - delete_remote (boolean) [optional]: whether the logs on the pis should be deleted or kept after collecting them
-
-        Returns nothing.
+        Args:
+            session_id: The id of the current experiment session, can be set
+                to anything at experiment creation.
+            hosts: A list of the hostnames of the target pis, should be left
+                empty to target all robots.
+            output_dir: The path to the location where the logs should be
+                stored; created if it doesn't already exist.
+            delete_remote: Whether the logs on the pis should be deleted or
+                kept after collecting them.
         """
         robots = await self.list_robots()
 
@@ -201,17 +216,37 @@ class SwarmClient:
             *tasks
         )
 
-    async def _collect_logs_from_robot(self, robot, session_id, destination, delete=False):
-        """
-        Collects the logs of an experiment session from a single robot.
+    async def _collect_logs_from_robot(
+        self,
+        robot: Dict[str, Any],
+        session_id: str,
+        destination: Path,
+        delete: bool = False,
+    ) -> None:
+        """Collect the logs of an experiment session from a single robot and save them to disk.
 
-        Params:
-            - robot (dict): The robot from which the logs should be collected with its hostname, IP and port
-            - session_id (string): The id of the current experiment session, can be set to anything at experiment creation
-            - destination (string): the path to the location where the logs should be stored
-            - delete (boolean) [optional]: whether the logs on the pi should be deleted or kept after collecting them
+        Sends a "collect_logs" request to the robot, then reads the
+        newline-delimited JSON reply stream: a "logs_begin" message
+        announcing the filename/size/chunk count (returns immediately if
+        there is no file), followed by "logs_chunk" messages whose
+        base64-encoded data is decoded and appended to an in-memory buffer,
+        until a "logs_end" message is received. The assembled bytes are
+        then written to disk under ``destination``.
 
-        Returns nothing.
+        Args:
+            robot: The robot from which the logs should be collected, with
+                its hostname, IP and port.
+            session_id: The id of the current experiment session, can be set
+                to anything at experiment creation.
+            destination: The path to the location where the logs should be
+                stored; created if it doesn't already exist.
+            delete: Whether the logs on the pi should be deleted or kept
+                after collecting them.
+
+        Raises:
+            RuntimeError: If the connection closes before the transfer
+                completes, the robot reports an error, or an unexpected
+                message type is received.
         """
         reader, writer = await asyncio.open_connection(
             robot["ip"],
@@ -276,15 +311,18 @@ class SwarmClient:
             writer.close()
             await writer.wait_closed()
 
-    async def delete_logs(self, session_id, hosts):
-        """
-        Deletes logs for an experiment session on the pis.
+    async def delete_logs(self, session_id: str, hosts: List[str]) -> Dict[str, Any]:
+        """Delete logs for an experiment session on the pis.
 
-        Params:
-            - session_id (string): The id of the current experiment session, can be set to anything at experiment creation
-            - hosts (list): A list of the hostnames of the target pis, should be left empty to target all robots.
+        Args:
+            session_id: The id of the current experiment session, can be set
+                to anything at experiment creation.
+            hosts: A list of the hostnames of the target pis, should be left
+                empty to target all robots.
 
-        Returns the responses from the pis.
+        Returns:
+            A dict containing the responses from the pis, keyed by
+            hostname.
         """
         return await self.broadcast(
             {
@@ -294,14 +332,15 @@ class SwarmClient:
             }
         )
     
-    async def identify(self, hostname: str):
-        """
-        Makes the thymio associated with the hostname light up red.
+    async def identify(self, hostname: str) -> None:
+        """Make the Thymio associated with the hostname light up red.
 
-        Params:
-            - hostname (string): the hostname of the target pi.
+        Args:
+            hostname: The hostname of the target pi.
 
-        Returns nothing.
+        Raises:
+            RuntimeError: If any robot's response indicates an error
+                (raised by ``_check_results``).
         """
         responses = await self.broadcast({
             "type": "identify",
@@ -312,15 +351,16 @@ class SwarmClient:
             responses,
         )
 
-    def _check_results(self, action, responses):
-        """
-        Checks the responses from the pis for errors. Raises a RuntimeError in case of error.
+    def _check_results(self, action: str, responses: Dict[str, Any]) -> None:
+        """Check the responses from the pis for errors.
 
-        Params:
-            - action (string): What action was attempted
-            - responses (dict): The response from every pi.
+        Args:
+            action: What action was attempted, used in the error message.
+            responses: The response from every pi, keyed by hostname.
 
-        Returns nothing.
+        Raises:
+            RuntimeError: If any robot's response has type "error", listing
+                all such failures.
         """
         failures = []
         for robot_id, response in responses.items():
@@ -333,14 +373,18 @@ class SwarmClient:
                 f"{action} failed:\n  " + "\n  ".join(failures)
             )
         
-    async def start_tracking(self, config):
-        """
-        Starts the optitrack tracking and begins the regular sending of tracking information.
+    async def start_tracking(self, config: Dict[str, Any]) -> None:
+        """Start the Optitrack tracker and the background loop that broadcasts poses.
 
-        Params:
-            - config (dict): the configuration of the experiment containing the tracking information such as the optitrack IP etc.
+        Does nothing if a tracker is already active. Otherwise constructs
+        an OptitrackClient from the given config, connects it, and
+        schedules ``tracking_loop`` as a background task.
 
-        Returns nothing.
+        Args:
+            config: The configuration of the experiment containing the
+                tracking information such as the optitrack IP etc. Expected
+                to contain "host" and "hostname_map", and optionally
+                "verbose".
         """
         from swarm_platform.tracking.optitrack_client import (
             OptitrackClient
@@ -358,11 +402,14 @@ class SwarmClient:
             self.tracking_loop()
         )
 
-    async def tracking_loop(self):
-        """
-        Sends regular updates to the pis containing the optitrack tracking data.
+    async def tracking_loop(self) -> None:
+        """Continuously poll the tracker and broadcast pose updates to the robots.
 
-        Returns nothing.
+        Every 0.5 seconds, fetches all current poses from ``self.tracker``
+        and, if any are available, broadcasts a "tracking_update" message
+        containing each pose serialized to a dict. Runs forever, logging
+        (but not raising) any exception so a transient failure doesn't stop
+        future updates.
         """
 
         if self.tracking_verbose:

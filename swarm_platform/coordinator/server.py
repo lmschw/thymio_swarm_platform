@@ -1,14 +1,35 @@
 import asyncio
 import json
 import time
+from typing import Any, Dict
 
-ROBOTS = {}  # robot_id -> {ip, port, last_seen}
+ROBOTS: Dict[str, Dict[str, Any]] = {}  # robot_id -> {ip, port, last_seen}
 
 
 HEARTBEAT_TIMEOUT = 30  # seconds
 
 
-async def handle(reader, writer):
+async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    """Handle a single incoming TCP connection from a robot or client.
+
+    Reads one newline-terminated JSON message from the connection and
+    dispatches it based on its ``type`` field:
+
+    - ``register``: add/update the sender in the global ``ROBOTS`` table.
+    - ``heartbeat``: refresh the sender's ``last_seen`` timestamp.
+    - ``list``: reply with the current contents of ``ROBOTS``.
+    - anything else: reply with an error message.
+
+    The connection is closed after the message is handled (or on
+    malformed/empty input).
+
+    Args:
+        reader: Stream to read the incoming JSON message from.
+        writer: Stream used to write the response and close the connection.
+
+    Returns:
+        None
+    """
     data = await reader.readline()
 
     if not data:
@@ -63,7 +84,16 @@ async def handle(reader, writer):
     writer.close()
 
 
-async def cleanup():
+async def cleanup() -> None:
+    """Periodically evict robots that have stopped sending heartbeats.
+
+    Runs forever as a background task: every 2 seconds it scans
+    ``ROBOTS`` and removes any entry whose ``last_seen`` timestamp is
+    older than ``HEARTBEAT_TIMEOUT`` seconds.
+
+    Returns:
+        None
+    """
     while True:
         now = time.time()
         to_remove = []
@@ -79,7 +109,16 @@ async def cleanup():
         await asyncio.sleep(2)
 
 
-async def main():
+async def main() -> None:
+    """Start the swarm coordinator TCP server and run it forever.
+
+    Binds a TCP server to ``0.0.0.0:9100`` that dispatches each
+    connection to :func:`handle`, and launches the :func:`cleanup`
+    background task to expire stale robot registrations.
+
+    Returns:
+        None
+    """
     server = await asyncio.start_server(handle, "0.0.0.0", 9100)
 
     print("Swarm Coordinator running on port 9100")

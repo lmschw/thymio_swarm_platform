@@ -1,3 +1,9 @@
+"""Minimal TCP server for manually testing that a robot is reachable on the network.
+
+Listens on PORT and, for every incoming connection, sends a fixed greeting
+and closes the connection. Runs forever.
+"""
+
 import socket
 
 HOST = "0.0.0.0"

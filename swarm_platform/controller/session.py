@@ -1,15 +1,32 @@
 import uuid
 import asyncio
 from pathlib import Path
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from swarm_platform.controller.client import SwarmClient
+    from swarm_platform.controller.project import Project
 
 class SwarmSession:
 
     """
     Manages an experiment run.
+
+    Wraps a single named experiment "session": starting, pausing,
+    resuming and stopping an experiment on the target pis, as well as
+    collecting and deleting the resulting logs.
     """
 
-    def __init__(self, client, project, name=None, hosts=[]):
+    def __init__(
+        self,
+        client: "SwarmClient",
+        project: "Project",
+        name: Optional[str] = None,
+        hosts: List[str] = [],
+    ) -> None:
         """
+        Initializes the session with its client, project, name and target hosts.
+
         Params:
             - client (SwarmClient): the SwarmClient which manages the connection to the coordinator and the pis.
             - project (Project): the project that is currently being handled.
@@ -25,15 +42,26 @@ class SwarmSession:
             or f"session-{uuid.uuid4().hex[:8]}"
         )
 
-    async def start(self, experiment, config=None):
+    async def start(
+        self,
+        experiment: str,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Starts a session and with it an experiment of the current project.
+
+        Activates the project, looks up the experiment's config, starts
+        tracking if the experiment requests it, and broadcasts the
+        start request to the target hosts.
 
         Params:
             - experiment (string): the name of the experiment
             - config (dict) [optional]: the configuration of the experiment.
 
-        Returns nothing.
+        Raises:
+            KeyError: If the experiment does not exist in the project config.
+            RuntimeError: If any pi fails to start the experiment
+                (raised by ``client._check_results``).
         """
         await self.project.activate()
 
@@ -58,33 +86,35 @@ class SwarmSession:
             responses,
         )
 
-    async def pause(self):
+    async def pause(self) -> None:
         """
         Pauses the current experiment.
 
-        Returns nothing.
+        Broadcasts a pause request for this session to the target hosts.
         """
         await self.client.broadcast({
             "type": "pause",
             "session_id": self.session_id,
         })
 
-    async def resume(self):
+    async def resume(self) -> None:
         """
         Resumes a paused experiment.
 
-        Returns nothing.
+        Broadcasts a resume request for this session to the target hosts.
         """
         await self.client.broadcast({
             "type": "resume",
             "session_id": self.session_id,
         })
 
-    async def stop(self):
+    async def stop(self) -> None:
         """
         Stops the current experiment as well as the tracking if applicable.
 
-        Returns nothing.
+        Cancels the client's tracking task and stops its tracker, if
+        any, then broadcasts a stop request for this session to the
+        target hosts.
         """
         if self.client.tracking_task:
             self.client.tracking_task.cancel()
@@ -95,15 +125,17 @@ class SwarmSession:
             "session_id": self.session_id,
         })
 
-    async def collect_logs(self, output_dir="results", delete_remote=True):
+    async def collect_logs(
+        self,
+        output_dir: str | Path = "results",
+        delete_remote: bool = True,
+    ) -> None:
         """
         Collect the logs from all hosts and saves them on the client computer.
 
         Params:
-            - output_dir (string) [optional]: the target directory on the client, where the logs should be saved.
+            - output_dir (string or Path) [optional]: the target directory on the client, where the logs should be saved.
             - delete_remote (boolean) [optional]: whether the logs should be deleted on the pis.
-
-        Returns nothing.
         """
         await self.client.collect_logs(
             session_id=self.session_id,
@@ -111,12 +143,12 @@ class SwarmSession:
             output_dir=Path(output_dir) / self.session_id,
             delete_remote=delete_remote,
         )
-    
-    async def delete_logs(self):
+
+    async def delete_logs(self) -> None:
         """
         Deletes the logs on the pis.
 
-        Returns nothing.
+        Broadcasts a delete-logs request for this session to the target hosts.
         """
         await self.client.delete_logs(
             self.session_id,

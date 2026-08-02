@@ -2,26 +2,57 @@ import threading
 import natnet
 import asyncio
 
+from typing import Any, Dict, List
+
 from swarm_platform.tracking.pose import Pose
 
 
 class _QuietNatNetLogger(natnet.Logger):
     """Suppresses the NatNet SDK's per-frame debug/info chatter (clock sync, etc.)."""
 
-    def debug(self, msg, *args):
+    def debug(self, msg: str, *args: Any) -> None:
+        """Discard a debug-level log message from the NatNet SDK.
+
+        Args:
+            msg: The debug message (ignored).
+            *args: Additional positional arguments accompanying the message
+                (ignored).
+        """
         pass
 
-    def info(self, msg, *args):
+    def info(self, msg: str, *args: Any) -> None:
+        """Discard an info-level log message from the NatNet SDK.
+
+        Args:
+            msg: The info message (ignored).
+            *args: Additional positional arguments accompanying the message
+                (ignored).
+        """
         pass
 
 
 class OptitrackClient:
+    """Client for the OptiTrack motion-capture system via the NatNet SDK.
+
+    Connects to a NatNet server, maps rigid bodies to robot hostnames, and
+    continuously receives pose updates on a background thread.
+    """
+
     def __init__(
         self,
         host: str,
         hostname_map: dict[str, str],
         verbose: bool = False,
-    ):
+    ) -> None:
+        """Initialize the client configuration without connecting.
+
+        Args:
+            host: Address of the NatNet server to connect to.
+            hostname_map: Mapping from robot hostname to the rigid body
+                name configured in Motive.
+            verbose: If True, enable verbose NatNet SDK logging and status
+                print statements.
+        """
         self.host = host
         self.hostname_map = hostname_map
         self.verbose = verbose
@@ -35,7 +66,18 @@ class OptitrackClient:
         self.thread = None
 
 
-    async def start(self):
+    async def start(self) -> None:
+        """Connect to the NatNet server and start receiving poses.
+
+        Connects the NatNet client, builds the rigid-body-to-hostname
+        mapping, registers the frame callback, and starts a background
+        thread that spins the client. Waits (asynchronously) until at
+        least one pose has been received or a timeout elapses.
+
+        Raises:
+            RuntimeError: If no OptiTrack poses are received within the
+                startup timeout.
+        """
 
         self.client = natnet.Client.connect(
             self.host,
@@ -80,7 +122,17 @@ class OptitrackClient:
                 self.poses,
             )
 
-    def _build_mapping(self):
+    def _build_mapping(self) -> None:
+        """Build the mapping from robot hostname to NatNet rigid body id.
+
+        Reads the rigid body definitions from the connected NatNet client
+        and resolves each configured hostname's rigid body name to its
+        NatNet id, populating ``self.robot_ids``.
+
+        Raises:
+            RuntimeError: If a configured rigid body name is not present
+                in the NatNet model definitions.
+        """
         names = {
             rb.name: rb.id_
             for rb in self.client._model_definitions
@@ -100,7 +152,13 @@ class OptitrackClient:
                 self.robot_ids
             )
 
-    def _spin(self):
+    def _spin(self) -> None:
+        """Run the NatNet client's blocking spin loop until stopped.
+
+        Intended to run on a background thread. Repeatedly calls
+        ``self.client.spin()`` until ``self.running`` becomes False; if
+        the call raises, the error is printed and the loop stops.
+        """
 
         while self.running:
             try:
@@ -114,10 +172,23 @@ class OptitrackClient:
 
     def _callback(
         self,
-        rigid_bodies,
-        markers,
-        timing,
-    ):
+        rigid_bodies: List[Any],
+        markers: Any,
+        timing: Any,
+    ) -> None:
+        """Handle a NatNet frame update by recording tracked robot poses.
+
+        Registered with the NatNet client as its per-frame callback. For
+        each rigid body in the frame, updates the pose of any hostname
+        whose mapped rigid body id matches that rigid body's id.
+
+        Args:
+            rigid_bodies: Rigid bodies reported in this frame, each
+                exposing ``id_``, ``position`` and ``orientation``.
+            markers: Unlabeled marker data reported in this frame
+                (unused).
+            timing: Timing information for this frame (unused).
+        """
         for rb in rigid_bodies:
             for hostname, rb_id in self.robot_ids.items():
                 if rb.id_ == rb_id:
@@ -126,10 +197,16 @@ class OptitrackClient:
                         orientation=rb.orientation,
                     )
 
-    async def get_all_poses(self):
+    async def get_all_poses(self) -> Dict[str, Pose]:
+        """Get a snapshot of the most recently received robot poses.
+
+        Returns:
+            A copy of the hostname-to-pose mapping.
+        """
         return dict(
             self.poses
         )
 
-    def stop(self):
+    def stop(self) -> None:
+        """Signal the background spin thread to stop."""
         self.running = False

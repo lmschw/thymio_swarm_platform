@@ -1,18 +1,36 @@
 from pathlib import Path
 import subprocess
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
 import yaml
 
 from swarm_platform.controller.session import SwarmSession
+
+if TYPE_CHECKING:
+    from swarm_platform.controller.client import SwarmClient
 
 
 class Project:
 
     """
     Manages the project code, the client and the hosts of the project.
+
+    Handles cloning/updating the project's git repository both locally
+    (on the controller machine) and remotely (on the swarm's Raspberry
+    Pis), loading the project's YAML configuration, and creating
+    :class:`SwarmSession` objects to run experiments.
     """
 
-    def __init__(self, client, repository: str, hosts: list, local_root: str | Path = "projects"):
+    def __init__(
+        self,
+        client: "SwarmClient",
+        repository: str,
+        hosts: List[str],
+        local_root: str | Path = "projects",
+    ) -> None:
         """
+        Initializes the project with its repository, client and target hosts.
+
         Params:
             - client (SwarmClient): the client that manages the connection to the coordinator and the pis.
             - repository (string): the link to the github repository with the project code
@@ -29,11 +47,13 @@ class Project:
         self.config = None
 
 
-    def _repo_name(self):
+    def _repo_name(self) -> str:
         """
         Determines the name of the repository from the link.
 
-        Returns the name of the repository (string).
+        Returns:
+            The name of the repository, with any trailing slash and
+            ``.git`` suffix stripped.
         """
         name = self.repository.rstrip("/").split("/")[-1]
 
@@ -47,11 +67,11 @@ class Project:
     # Local controller project
     # --------------------------
 
-    def clone_local(self):
+    def clone_local(self) -> None:
         """
         Clone the project repository locally on the client machine.
 
-        Returns nothing.
+        Does nothing if the local path already exists.
         """
         if self.local_path.exists():
             return
@@ -72,11 +92,11 @@ class Project:
         )
 
 
-    def update_local(self):
+    def update_local(self) -> None:
         """
         Updates the local copy of the project github repository.
 
-        Returns nothing.
+        Clones the repository instead if it does not yet exist locally.
         """
         if not self.local_path.exists():
             self.clone_local()
@@ -93,11 +113,17 @@ class Project:
         )
 
 
-    def load_config(self):
+    def load_config(self) -> None:
         """
         Loads the project config that was passed at instantiation.
 
-        Returns nothing.
+        Does nothing if the config was already loaded. The config is
+        read from the ``swarm_project.yaml`` file at the root of the
+        local repository copy.
+
+        Raises:
+            FileNotFoundError: If the ``swarm_project.yaml`` file is
+                missing from the local repository copy.
         """
         if self.config is not None:
             return
@@ -116,14 +142,20 @@ class Project:
             self.config = yaml.safe_load(f)
 
 
-    def experiment_config(self, name):
+    def experiment_config(self, name: str) -> Dict[str, Any]:
         """
         Retrieves the config for a specific experiment.
+
+        Loads the project config first if it has not been loaded yet.
 
         Params:
             - name (string): the name of the experiment.
 
-        Returns the config. Raises a KeyError if the experiment does not exist in the config.
+        Returns:
+            The config dictionary for the named experiment.
+
+        Raises:
+            KeyError: If the experiment does not exist in the config.
         """
         self.load_config()
 
@@ -137,11 +169,16 @@ class Project:
 
 
     @property
-    def tracking(self):
+    def tracking(self) -> Optional[Dict[str, Any]]:
         """
-        Checks if tracking is enabled for the current experiment.
+        Retrieves the project-wide tracking configuration.
 
-        Returns boolean whether position tracking is enabled.
+        Loads the project config first if it has not been loaded yet.
+
+        Returns:
+            The value stored under the ``tracking`` key of the project
+            config (e.g. OptiTrack connection settings), or ``None`` if
+            it is not set.
         """
         self.load_config()
 
@@ -154,11 +191,16 @@ class Project:
     # Remote projects
     # --------------------------
 
-    async def install(self):
+    async def install(self) -> None:
         """
         Clones and installs the project repository on the pis.
 
-        Returns nothing.
+        Broadcasts a clone request to the target pis, clones the
+        repository locally as well, and then activates the project.
+
+        Raises:
+            RuntimeError: If any pi fails to clone/install the project
+                (raised by ``client._check_results``).
         """
         responses = await self.client.broadcast({
             "type": "clone_project",
@@ -176,11 +218,18 @@ class Project:
         await self.activate()
 
 
-    async def update(self):
+    async def update(self) -> None:
         """
         Pulls from the remote github repository and thereby updates the project code on the pis.
 
-        Returns nothing.
+        Broadcasts an update request to the target pis, pulls the
+        local repository copy as well, invalidates the cached config
+        so it gets reloaded on next access, and then activates the
+        project.
+
+        Raises:
+            RuntimeError: If any pi fails to update the project
+                (raised by ``client._check_results``).
         """
         responses = await self.client.broadcast({
             "type": "update_project",
@@ -199,11 +248,13 @@ class Project:
         await self.activate()
 
 
-    async def activate(self):
+    async def activate(self) -> None:
         """
         Activates the project on all pis or on the specified subset of hosts.
 
-        Returns nothing.
+        Raises:
+            RuntimeError: If any pi fails to activate the project
+                (raised by ``client._check_results``).
         """
         responses = await self.client.broadcast({
             "type": "activate_project",
@@ -216,14 +267,16 @@ class Project:
         )
 
 
-    def session(self, name=None):
+    def session(self, name: Optional[str] = None) -> SwarmSession:
         """
         Creates a SwarmSession object for the current project.
 
         Params:
-            - name (string): the name of the session.
-        
-        Returns the SwarmSession object.
+            - name (string) [optional]: the name of the session.
+
+        Returns:
+            The created SwarmSession object, targeting the same hosts
+            as this project.
         """
         return SwarmSession(
             self.client,

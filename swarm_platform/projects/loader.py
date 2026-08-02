@@ -8,7 +8,23 @@ from .project import Project, ExperimentConfig
 
 
 class ProjectLoader:
+    """Loads a swarm project definition from a ``swarm_project.yaml`` manifest."""
+
     def load(self, path: Path) -> Project:
+        """Load a project from its manifest directory.
+
+        Adds the project directory to ``sys.path`` so its modules are
+        importable, parses ``swarm_project.yaml``, dynamically imports
+        each configured experiment's class, and builds the resulting
+        :class:`Project`.
+
+        Args:
+            path: Path to the project directory containing
+                ``swarm_project.yaml``.
+
+        Returns:
+            The loaded project, including its experiment configurations.
+        """
         # Make project modules importable
         project_root = str(path)
 

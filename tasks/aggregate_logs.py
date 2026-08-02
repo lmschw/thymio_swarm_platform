@@ -1,3 +1,5 @@
+"""Manual task script: unpack a session's zipped robot logs and aggregate them into one CSV."""
+
 import asyncio
 import sys
 from pathlib import Path
@@ -7,7 +9,12 @@ from swarm_platform.utils.unpack_results import (
 )
 
 
-async def main():
+async def main() -> None:
+    """Parse zip/output paths from argv, unpack the session logs, and aggregate them.
+
+    Prints usage and returns early if the expected two path arguments are not
+    provided.
+    """
 
     if len(sys.argv) != 3:
         print(

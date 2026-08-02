@@ -1,40 +1,93 @@
 import asyncio
 import socket
+from typing import Any, Dict, List, Optional, Tuple
 
 from .connection import ThymioConnection
 from .state import RobotState
 from ..protocol.command import RobotCommand
 from ..utils.config import RobotConfig
+from ..tracking.pose import Pose
 
 class Robot:
 
-    def __init__(self, config: RobotConfig | None = None, tracker=None):
+    """
+    High-level interface to a single Thymio robot.
+
+    Wraps a :class:`ThymioConnection` to expose motor, LED, sensor and
+    proximity-communication operations as simple async methods, and
+    tracks the robot's own and swarm-mates' global poses (as reported
+    by an external tracking system).
+    """
+
+    def __init__(self, config: Optional[RobotConfig] = None, tracker: Optional[Any] = None) -> None:
+        """
+        Initializes the robot with its configuration and optional tracker.
+
+        Args:
+            config: The robot's configuration (motor limits, wheel
+                geometry, etc.). Defaults to a new ``RobotConfig()``
+                with default values if not provided.
+            tracker: Optional external tracking client (e.g. an
+                OptiTrack client) associated with this robot.
+        """
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
         self.hostname = socket.gethostname()
         self.tracker = tracker
-        self.global_poses = {}
+        self.global_poses: Dict[str, Pose] = {}
 
     # Context manager
-    async def __aenter__(self):
+    async def __aenter__(self) -> "Robot":
+        """
+        Async context manager entry point; connects to the robot.
+
+        Returns:
+            This robot instance, once connected.
+        """
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        """
+        Async context manager exit point; stops the motors and disconnects.
+
+        Args:
+            exc_type: The exception type raised in the ``with`` block, if any.
+            exc: The exception instance raised in the ``with`` block, if any.
+            tb: The traceback of the exception raised in the ``with`` block, if any.
+        """
         try:
             await self.stop()
         finally:
             await self.disconnect()
 
-    
+
     # Connection
-    async def connect(self):
+    async def connect(self) -> None:
+        """
+        Connects to the underlying Thymio node.
+        """
         await self.connection.connect()
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
+        """
+        Disconnects from the underlying Thymio node.
+        """
         await self.connection.disconnect()
 
-    async def _set_variables(self, var_dict, timeout=1.0):
+    async def _set_variables(self, var_dict: Dict[str, List[int]], timeout: float = 1.0) -> None:
+        """
+        Sets Thymio VM variables and waits for the acknowledgment.
+
+        Args:
+            var_dict: Mapping of Thymio variable names to the values to
+                assign to them.
+            timeout: Maximum number of seconds to wait for the ack.
+
+        Raises:
+            RuntimeError: If no acknowledgment is received before the
+                timeout elapses.
+        """
         try:
             await asyncio.wait_for(
                 self.connection.node.set_variables(var_dict),
@@ -46,40 +99,89 @@ class Robot:
             )
 
     # Motors
-    async def drive(self, left: int, right: int):
+    async def drive(self, left: int, right: int) -> None:
+        """
+        Sets the target speed of the left and right motors.
+
+        Args:
+            left: Target speed for the left motor.
+            right: Target speed for the right motor.
+        """
 
         await self._set_variables({
             "motor.left.target": [int(left)],
             "motor.right.target": [int(right)],
         })
 
-    async def stop(self):
+    async def stop(self) -> None:
+        """
+        Stops both motors by setting their target speed to zero.
+        """
         await self.drive(0, 0)
 
     # LEDs
-    async def top_led(self, r: int, g: int, b: int):
+    async def top_led(self, r: int, g: int, b: int) -> None:
+        """
+        Sets the color of the robot's top LED.
+
+        Args:
+            r: Red channel value.
+            g: Green channel value.
+            b: Blue channel value.
+        """
         await self._set_variables({
             "leds.top": [int(r), int(g), int(b)]
         })
 
     # Sensors
-    async def proximity_horizontal(self):
+    async def proximity_horizontal(self) -> List[int]:
+        """
+        Reads the horizontal proximity sensor values.
+
+        Returns:
+            The list of horizontal proximity sensor readings.
+        """
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.horizontal"))
 
-    async def proximity_ground_delta(self):
+    async def proximity_ground_delta(self) -> List[int]:
+        """
+        Reads the ground proximity sensor delta values.
+
+        Returns:
+            The list of ground proximity delta readings.
+        """
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.delta"))
-    
-    async def proximity_ground_reflected(self):
+
+    async def proximity_ground_reflected(self) -> List[int]:
+        """
+        Reads the ground proximity sensor reflected light values.
+
+        Returns:
+            The list of ground proximity reflected-light readings.
+        """
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.reflected"))
-    
-    async def proximity_ground_ambiant(self):
+
+    async def proximity_ground_ambiant(self) -> List[int]:
+        """
+        Reads the ground proximity sensor ambient light values.
+
+        Returns:
+            The list of ground proximity ambient-light readings.
+        """
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.ambiant"))
 
-    async def buttons(self):
+    async def buttons(self) -> Dict[str, bool]:
+        """
+        Reads the state of the robot's buttons.
+
+        Returns:
+            A dictionary mapping each button name ("forward",
+            "backward", "left", "right", "center") to its pressed state.
+        """
         await self.connection.process_messages()
         return {
             "forward": self.connection.node.var.get("button.forward"),
@@ -89,23 +191,55 @@ class Robot:
             "center": self.connection.node.var.get("button.center"),
         }
 
-    async def accelerometer(self):
+    async def accelerometer(self) -> List[int]:
+        """
+        Reads the accelerometer values.
+
+        Returns:
+            The list of accelerometer readings.
+        """
         await self.connection.process_messages()
         return list(self.connection.node.var.get("acc"))
 
-    async def temperature(self):
+    async def temperature(self) -> int:
+        """
+        Reads the robot's temperature sensor value.
+
+        Returns:
+            The temperature reading.
+        """
         await self.connection.process_messages()
         return self.connection.node["temperature"]
 
     # Sounds
-    async def system_sound(self, sound: int):
+    async def system_sound(self, sound: int) -> None:
+        """
+        Plays (or stops) a system sound.
+
+        Note:
+            This currently only prints the requested sound id; it does
+            not yet trigger playback on the robot.
+
+        Args:
+            sound: The id of the system sound to play, or ``-1`` to stop.
+        """
         if sound != -1:
             print("system.sound", sound)
 
-    async def sound_stop(self):
+    async def sound_stop(self) -> None:
+        """
+        Stops any currently playing system sound.
+        """
         await self.system_sound(-1)
-    
-    async def state(self):
+
+    async def state(self) -> RobotState:
+        """
+        Reads the robot's full sensor/actuator state.
+
+        Returns:
+            A ``RobotState`` snapshot containing the proximity, ground,
+            accelerometer, button and temperature readings.
+        """
         return RobotState(
             proximity=await self.proximity_horizontal(),
             ground=await self.proximity_ground_delta(),
@@ -114,7 +248,14 @@ class Robot:
             temperature=await self.temperature(),
         )
     
-    async def apply(self, command: RobotCommand):
+    async def apply(self, command: RobotCommand) -> None:
+        """
+        Applies a robot command by driving the motors and setting the top LED.
+
+        Args:
+            command: The command containing the target motor speeds and
+                top LED color to apply.
+        """
         await self.drive(
             command.left_motor,
             command.right_motor,
@@ -122,7 +263,13 @@ class Robot:
 
         await self.top_led(*command.top_led)
 
-    async def send(self, value):
+    async def send(self, value: int) -> None:
+        """
+        Sends a value over proximity communication (prox.comm.tx).
+
+        Args:
+            value: The value to broadcast to nearby robots.
+        """
         value = int(value)
 
         await self._set_variables({
@@ -131,19 +278,47 @@ class Robot:
 
         self.connection.client.process_waiting_messages()
 
-    async def receive(self):
+    async def receive(self) -> Tuple[int, List[int], int, int]:
+        """
+        Reads the last received proximity communication value and intensities.
+
+        Splits the per-sensor intensities into a front sum (sensors 0-4)
+        and a rear sum (sensors 5-6).
+
+        Returns:
+            A tuple of ``(rx, intensities, front_intensity,
+            rear_intensity)`` where ``rx`` is the last received value,
+            ``intensities`` is the list of per-sensor intensities,
+            ``front_intensity`` is the sum of the front sensor
+            intensities, and ``rear_intensity`` is the sum of the rear
+            sensor intensities.
+        """
         await self.connection.process_messages()
         rx = self.connection.node.var.get("prox.comm.rx")
         intensities = self.connection.node.var.get("prox.comm.rx._intensities")
         front_intensity = intensities[0] + intensities[1] + intensities[2] + intensities[3] + intensities[4]
         rear_intensity = intensities[5] + intensities[6]
         return rx, intensities, front_intensity, rear_intensity
-    
-    async def get_global_pose(self):
+
+    async def get_global_pose(self) -> Optional[Pose]:
+        """
+        Retrieves this robot's own global pose from the tracked poses.
+
+        Returns:
+            This robot's ``Pose`` (looked up by its hostname), or
+            ``None`` if it is not present in ``global_poses``.
+        """
         poses = self.global_poses
         return poses.get(self.hostname)
 
-    async def get_all_global_poses(self):
+    async def get_all_global_poses(self) -> Dict[str, Pose]:
+        """
+        Retrieves the global poses of all tracked robots.
+
+        Returns:
+            A shallow copy of the ``hostname -> Pose`` mapping of all
+            currently tracked robots.
+        """
         return dict(
             self.global_poses
         )

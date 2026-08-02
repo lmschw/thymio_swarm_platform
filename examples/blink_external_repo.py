@@ -1,8 +1,23 @@
+"""Example script: install/run a "blink" experiment from an external robot-code repo.
+
+Connects to the coordinator, installs and activates the
+`thymio_raspberry_swarm_control` project on a set of hosts, starts the
+`optitrack_positions` experiment session, and lets the user interactively
+pause/resume/stop it before collecting logs.
+"""
+
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
 
-async def main():
+
+async def main() -> None:
+    """Run the blink example end-to-end against the coordinator.
+
+    Installs and activates the external project, starts an experiment
+    session, then loops reading pause/resume/stop commands from stdin until
+    the user stops the session, after which logs are collected.
+    """
 
     client = SwarmClient("10.15.2.63")
     hosts = []

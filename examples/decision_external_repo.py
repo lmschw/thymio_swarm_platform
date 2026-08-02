@@ -1,3 +1,12 @@
+"""Example script: install/run a "decision making" experiment from an external robot-code repo.
+
+Connects to the coordinator, installs and activates the
+`thymio_decision_making` project on a fixed set of hosts, starts the
+`communication_test` experiment session, and lets the user interactively
+pause/resume/stop it before collecting and deleting logs. On exit (including
+via exception), attempts to stop the session as a cleanup step.
+"""
+
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
@@ -8,7 +17,15 @@ SESSION_NAME = "communication_test-run"
 EXPERIMENT_NAME = "communication_test"
 HOSTS = ["thymio-01", "thymio-04"]
 
-async def main():
+
+async def main() -> None:
+    """Run the decision-making example end-to-end against the coordinator.
+
+    Installs and activates the external project, starts an experiment
+    session, then loops reading pause/resume/stop commands from stdin until
+    the user stops the session, after which logs are collected and deleted.
+    A `finally` block attempts to stop the session again as a safety net.
+    """
 
     try:
         client = SwarmClient(COORDINATOR_IP)

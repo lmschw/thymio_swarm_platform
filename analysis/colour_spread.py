@@ -1,3 +1,11 @@
+"""Analysis script: summarize reflected-light readings by colour for each run.
+
+For every CSV file found under `results_dir` (grouped by the run directory
+name), computes descriptive statistics (count, mean, std, min, max, median) of
+the "reflected_avg" column per "colour" value, prints the summary, and writes
+it to a "<run>_reflected_avg_by_colour.csv" file.
+"""
+
 from pathlib import Path
 from collections import defaultdict
 import pandas as pd

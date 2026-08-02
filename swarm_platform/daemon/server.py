@@ -8,6 +8,7 @@ import base64
 import io
 import zipfile
 import shutil
+from typing import Any, Dict, Optional
 
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.robot.robot import Robot
@@ -17,8 +18,25 @@ from swarm_platform.daemon.log_manager import LogManager
 from swarm_platform.tracking.pose import Pose
 
 class SwarmDaemon:
+    """Runs on each robot's Raspberry Pi to manage the local robot, its active project, and experiments.
 
-    def __init__(self):
+    Maintains a persistent TCP server that the coordinator/controller talks
+    to, periodically registers itself with the coordinator and sends
+    heartbeats, dispatches incoming JSON messages to the appropriate action
+    (starting/stopping experiments, cloning/updating/activating projects,
+    identifying the robot, forwarding tracking updates, and streaming
+    collected logs back to the caller).
+    """
+
+    def __init__(self) -> None:
+        """Initialize the daemon, its project manager, robot handle, and internal state.
+
+        Reads the coordinator address and port from the
+        ``SWARM_COORDINATOR``/``SWARM_COORDINATOR_PORT`` environment
+        variables (falling back to defaults), sets up the active project
+        manager, the robot handle, the log manager, and all of the mutable
+        state used to track the currently running experiment.
+        """
         print("cwd =", Path.cwd(), flush=True)
         print("__file__ =", __file__, flush=True)
         print("git root =", Path(__file__).resolve().parents[2], flush=True)
@@ -40,7 +58,28 @@ class SwarmDaemon:
         self.global_poses = {}
         self._restart_requested = False
 
-    async def handle(self, msg: dict):
+    async def handle(self, msg: Dict[str, Any]) -> Dict[str, Any]:
+        """Dispatch an incoming message to the corresponding daemon action.
+
+        Filters out messages addressed to other hosts, checks that the
+        message's session_id (if any) matches the currently active session
+        (except for "start_experiment", which establishes the active
+        session), and then executes the action matching the message's
+        "type" field: ping/status queries, pause/resume/stop of the running
+        experiment, starting a new experiment, cloning/updating/activating
+        the active project, updating the daemon's own code, deleting logs,
+        identifying the robot via its LED, and applying tracking updates.
+
+        Args:
+            msg: The decoded message dict. Must contain a "type" key and may
+                contain "hosts" and "session_id" keys along with type-specific
+                fields.
+
+        Returns:
+            A response dict describing the result of the action, or an
+            "unknown_command"/"Not applicable" error dict if the message
+            could not be handled.
+        """
         t = msg.get("type")
         hosts = msg.get("hosts")
         if hosts and len(hosts) > 0 and socket.gethostname() not in hosts:
@@ -191,7 +230,14 @@ class SwarmDaemon:
     # EXPERIMENT CONTROL
     # ---------------------------
 
-    async def _run_experiment(self):
+    async def _run_experiment(self) -> None:
+        """Run the current experiment to completion and clean up afterwards.
+
+        Awaits ``self.experiment.run()``, catching and logging any exception
+        it raises so the daemon keeps running. Once the experiment finishes
+        (or crashes), marks the experiment as no longer running and closes
+        the session logger if one is open.
+        """
         try:
             print(">>> EXPERIMENT TASK STARTED <<<", flush=True)
             await self.experiment.run()
@@ -204,7 +250,24 @@ class SwarmDaemon:
                 self.logger.close()
                 self.logger = None
 
-    async def _start_experiment(self, msg):
+    async def _start_experiment(self, msg: Dict[str, Any]) -> Dict[str, Any]:
+        """Instantiate and launch the requested experiment as a background task.
+
+        Looks up the experiment class from the active project's
+        configuration, constructs it with the current robot, the requested
+        config, and the session logger, then schedules it to run via
+        ``_run_experiment`` on a new asyncio task.
+
+        Args:
+            msg: The "start_experiment" message dict. Must contain a "name"
+                key identifying the experiment to run and may contain a
+                "config" dict of experiment-specific settings.
+
+        Returns:
+            {"type": "error", "error": ...} if an experiment is already
+            running, otherwise {"type": "started"} once the experiment task
+            has been scheduled.
+        """
         if self.running_experiment:
             return {
                 "type": "error",
@@ -243,7 +306,13 @@ class SwarmDaemon:
     # NETWORK LOOP TASKS
     # ---------------------------
 
-    async def register_loop(self):
+    async def register_loop(self) -> None:
+        """Periodically re-register this robot with the coordinator.
+
+        Calls ``register()`` every 30 seconds forever, logging (but not
+        raising) any exception so a temporary network failure doesn't stop
+        future attempts.
+        """
         while True:
             try:
                 await self.register()
@@ -252,7 +321,13 @@ class SwarmDaemon:
 
             await asyncio.sleep(30)
 
-    async def heartbeat_loop(self):
+    async def heartbeat_loop(self) -> None:
+        """Periodically send a heartbeat to the coordinator.
+
+        Calls ``send_heartbeat()`` every 5 seconds forever, logging (but not
+        raising) any exception so a temporary network failure doesn't stop
+        future attempts.
+        """
         while True:
             try:
                 await self.send_heartbeat()
@@ -265,7 +340,12 @@ class SwarmDaemon:
     # ROBOT / COORDINATOR
     # ---------------------------
 
-    async def connect_robot(self):
+    async def connect_robot(self) -> None:
+        """Repeatedly attempt to connect to the robot until it succeeds.
+
+        Retries ``self.robot.connect()`` every 2 seconds, logging each
+        failure, until a connection attempt succeeds.
+        """
         while True:
             try:
                 await self.robot.connect()
@@ -275,12 +355,27 @@ class SwarmDaemon:
                 print(f"[ROBOT] waiting: {e}")
                 await asyncio.sleep(2)
 
-    def get_ip(self):
+    def get_ip(self) -> str:
+        """Determine this machine's outbound IP address.
+
+        Opens a UDP socket "connected" to a public address (8.8.8.8:80)
+        without sending any data, purely to let the OS pick the local
+        interface/address that would be used to reach it.
+
+        Returns:
+            The local IP address as a string.
+        """
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         return s.getsockname()[0]
 
-    async def register(self):
+    async def register(self) -> None:
+        """Send a one-shot "register" message to the coordinator.
+
+        Opens a new TCP connection to the coordinator and sends this
+        robot's hostname, IP address, and port as a "register" message,
+        then closes the connection.
+        """
         msg = {
             "type": "register",
             "robot_id": socket.gethostname(),
@@ -298,7 +393,13 @@ class SwarmDaemon:
         writer.close()
         await writer.wait_closed()
 
-    async def send_heartbeat(self):
+    async def send_heartbeat(self) -> None:
+        """Send a one-shot "heartbeat" message to the coordinator.
+
+        Opens a new TCP connection to the coordinator and sends this
+        robot's hostname as a "heartbeat" message, then closes the
+        connection.
+        """
         msg = {
             "type": "heartbeat",
             "robot_id": socket.gethostname()
@@ -318,7 +419,27 @@ class SwarmDaemon:
     # TCP SERVER
     # ---------------------------
 
-    async def _handle_connection(self, reader, writer):
+    async def _handle_connection(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        """Serve a single incoming TCP connection for its whole lifetime.
+
+        Reads newline-delimited JSON messages from the connection in a
+        loop. "collect_logs" messages are handled specially by streaming
+        the logs back via ``stream_logs``; all other messages are
+        dispatched through ``handle`` and the resulting response is encoded
+        and written back. If handling a message raises, an "internal_error"
+        response is sent instead and the exception is logged. If
+        ``self._restart_requested`` was set (e.g. after a project/code
+        update), the process exits after responding. The loop ends, and the
+        connection is closed, once the peer disconnects.
+
+        Args:
+            reader: The stream to read incoming messages from.
+            writer: The stream to write responses to.
+        """
         while True:
             data = await reader.readline()
 
@@ -367,7 +488,19 @@ class SwarmDaemon:
     # MAIN RUN LOOP
     # ---------------------------
 
-    async def run(self, host="0.0.0.0", port=9000):
+    async def run(self, host: str = "0.0.0.0", port: int = 9000) -> None:
+        """Start the daemon: connect to the robot, run the TCP server, and background loops.
+
+        Blocks until the robot connection succeeds, then starts the TCP
+        server that handles incoming connections via
+        ``_handle_connection``, launches the registration and heartbeat
+        background loops, and finally waits forever (the daemon is expected
+        to run until the process is killed or restarted).
+
+        Args:
+            host: The address to bind the TCP server to.
+            port: The port to bind the TCP server to.
+        """
         print(">>> DAEMON STARTED <<<")
 
         await self.connect_robot()
@@ -387,7 +520,24 @@ class SwarmDaemon:
             await asyncio.Event().wait()
 
 
-    async def collect_logs(self, session_id, delete=False):
+    async def collect_logs(
+        self,
+        session_id: str,
+        delete: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """Zip up the log directory for a session and return it as bytes.
+
+        Args:
+            session_id: The id of the experiment session whose logs to
+                collect.
+            delete: If True, delete the session's log directory after
+                zipping it.
+
+        Returns:
+            None if the session's log directory does not exist, otherwise a
+            dict with "type", a "filename" of "<hostname>.zip", and the zip
+            archive's raw bytes under "data".
+        """
         print("Collecting logs.")
         log_dir = Path("logs") / session_id
 
@@ -419,10 +569,26 @@ class SwarmDaemon:
 
     async def stream_logs(
         self,
-        writer,
-        session_id,
-        delete=False,
-    ):
+        writer: asyncio.StreamWriter,
+        session_id: str,
+        delete: bool = False,
+    ) -> None:
+        """Collect a session's logs and stream them to the peer in base64-encoded chunks.
+
+        Calls ``collect_logs`` and writes the result to ``writer`` as a
+        sequence of newline-delimited JSON messages: a "logs_begin" message
+        with the filename/size/chunk count (size 0 and filename None if
+        there are no logs), followed by one "logs_chunk" message per 32KB
+        chunk of the zip data (base64-encoded), followed by a "logs_end"
+        message.
+
+        Args:
+            writer: The stream to write the log messages to.
+            session_id: The id of the experiment session whose logs to
+                stream.
+            delete: If True, delete the session's log directory after
+                collecting it.
+        """
         result = await self.collect_logs(
             session_id,
             delete=delete,

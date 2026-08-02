@@ -1,3 +1,10 @@
+"""Manual test script: connect to an OptiTrack/NatNet server and print rigid-body timestamps.
+
+Connects to the NatNet server, registers a callback that prints the frame
+timestamp whenever rigid bodies are received, spins the client for 15
+seconds, then stops it.
+"""
+
 import natnet
 from natnet.protocol.MocapFrameMessage import LabelledMarker, RigidBody
 from natnet.comms import TimestampAndLatency
@@ -18,7 +25,14 @@ try:
     print("NatNet client connected successfully.")
 
     # Define a callback function to process received data
-    def natnet_callback(rigid_bodies: list[RigidBody], markers: list[LabelledMarker], timing: TimestampAndLatency):
+    def natnet_callback(rigid_bodies: list[RigidBody], markers: list[LabelledMarker], timing: TimestampAndLatency) -> None:
+        """Print the frame timestamp for each received rigid body.
+
+        Args:
+            rigid_bodies: Rigid bodies reported in this frame.
+            markers: Labelled markers reported in this frame (unused).
+            timing: Timestamp and latency information for this frame.
+        """
         if rigid_bodies:
             for rb in rigid_bodies:
                 print(f"time: {timing.timestamp}")

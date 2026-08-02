@@ -8,7 +8,17 @@ from swarm_platform.utils.reconstruct_trajectories import (
 )
 
 
-async def main():
+async def main() -> None:
+    """Load a trajectories CSV and save a trajectory plot to a PNG file.
+
+    Reads the aggregated results CSV path and output image path from the
+    command line (plus optional hostnames to filter to), loads the
+    corresponding trajectories, and plots and saves them.
+
+    Raises:
+        RuntimeError: If no trajectories are found for the given CSV file
+            and hostnames.
+    """
 
     if len(sys.argv) < 3:
         print("Usage:")

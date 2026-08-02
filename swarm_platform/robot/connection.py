@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any, Optional
 
 from tdmclient import ClientAsync
 
@@ -8,17 +9,47 @@ from ..utils.tdm import ensure_tdm_running
 
 class ThymioConnection:
 
-    def __init__(self):
+    """
+    Manages the low-level connection to a Thymio robot via the Thymio
+    Device Manager (TDM).
 
-        self.client = None
+    Handles waiting for and locking a stable Thymio node, enabling
+    proximity communication, and polling for incoming messages/events
+    for the lifetime of the connection. Can be used as an async context
+    manager.
+    """
 
-        self.node = None
-        self.node_context = None
+    def __init__(self) -> None:
+        """
+        Initializes the connection state; does not connect to a node yet.
+        """
 
-        self.running = False
-        self.poll_task = None
+        self.client: Optional[ClientAsync] = None
 
-    async def _wait_for_ready_node(self, timeout=10):
+        self.node: Optional[Any] = None
+        self.node_context: Optional[Any] = None
+
+        self.running: bool = False
+        self.poll_task: Optional["asyncio.Task[None]"] = None
+
+    async def _wait_for_ready_node(self, timeout: float = 10) -> Any:
+        """
+        Waits for a Thymio node to appear and remain stable.
+
+        Repeatedly processes waiting messages and looks at the list of
+        known nodes. A node is considered ready once the same node has
+        been seen continuously for more than 0.5 seconds.
+
+        Args:
+            timeout: Maximum number of seconds to wait for a stable node.
+
+        Returns:
+            The stable Thymio node object.
+
+        Raises:
+            RobotConnectionError: If no stable node was detected before
+                the timeout elapsed.
+        """
 
         start = asyncio.get_running_loop().time()
 
@@ -53,7 +84,22 @@ class ThymioConnection:
 
         raise RobotConnectionError("No stable Thymio node detected")
     
-    async def connect(self):
+    async def connect(self) -> None:
+        """
+        Connects to a Thymio robot through the Thymio Device Manager.
+
+        Ensures the TDM is running, opens a ``ClientAsync`` connection,
+        waits for a stable node, locks it, enables variable/event
+        watching and proximity communication (``prox.comm.enable``),
+        waits for the first sensor frame to be published, and starts
+        the background polling task.
+
+        Raises:
+            RobotConnectionError: If no stable node is detected, or if
+                compiling/running the ``prox.comm.enable`` call fails.
+            RuntimeError: If the Thymio Device Manager is not running
+                (raised by ``ensure_tdm_running``).
+        """
 
         ensure_tdm_running()
 
@@ -109,7 +155,14 @@ class ThymioConnection:
         self.running = True
         self.poll_task = asyncio.create_task(self._poll())
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
+        """
+        Disconnects from the Thymio robot and releases resources.
+
+        Stops the polling loop and cancels its task, unlocks the node
+        (ignoring any errors), and exits the ``ClientAsync`` context
+        (ignoring any errors), resetting all connection state.
+        """
 
         self.running = False
 
@@ -140,10 +193,19 @@ class ThymioConnection:
 
         self.node = None
 
-    async def process_messages(self):
+    async def process_messages(self) -> None:
+        """
+        Processes any messages waiting on the TDM client connection.
+        """
         self.client.process_waiting_messages()
 
-    async def _poll(self):
+    async def _poll(self) -> None:
+        """
+        Background loop that continuously processes waiting messages.
+
+        Runs until ``self.running`` is set to ``False`` (by
+        :meth:`disconnect`), sleeping briefly between each iteration.
+        """
 
         while self.running:
 
@@ -151,11 +213,25 @@ class ThymioConnection:
 
             await asyncio.sleep(0.01)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "ThymioConnection":
+        """
+        Async context manager entry point; connects to the robot.
+
+        Returns:
+            This connection instance, once connected.
+        """
 
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        """
+        Async context manager exit point; disconnects from the robot.
+
+        Args:
+            exc_type: The exception type raised in the ``with`` block, if any.
+            exc: The exception instance raised in the ``with`` block, if any.
+            tb: The traceback of the exception raised in the ``with`` block, if any.
+        """
 
         await self.disconnect()

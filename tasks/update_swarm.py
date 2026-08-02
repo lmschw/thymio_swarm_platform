@@ -1,9 +1,16 @@
+"""Manual task script: list known robots and broadcast a code-update command to the swarm."""
+
 import asyncio
 
 from swarm_platform.controller.client import SwarmClient
 
 
-async def main():
+async def main() -> None:
+    """Connect to the coordinator, list robots, and broadcast an update_code command.
+
+    Prints the discovered robots, triggers an `update_code` broadcast to the
+    whole swarm, and prints any responses returned by the broadcast.
+    """
 
     client = SwarmClient("10.15.2.63")  # coordinator IP
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,10 +7,14 @@ import matplotlib.pyplot as plt
 
 def load_trajectories(
     csv_file: str | Path,
-    hostnames: list[str] | None = None,
-):
+    hostnames: Optional[List[str]] = None,
+) -> Dict[str, pd.DataFrame]:
     """
     Load trajectories from an aggregated OptiTrack CSV.
+
+    Reads the CSV, optionally filters it down to the requested
+    hostnames, and splits it into one dataframe per hostname containing
+    the pose and motor columns.
 
     Parameters
     ----------
@@ -54,12 +59,17 @@ def load_trajectories(
 
 
 def plot_trajectories(
-    trajectories,
-    output_file: str | Path | None = None,
-    title="Robot trajectories",
-):
+    trajectories: Dict[str, pd.DataFrame],
+    output_file: Optional[str | Path] = None,
+    title: str = "Robot trajectories",
+) -> None:
     """
     Plot reconstructed robot trajectories.
+
+    For each robot, plots its x/z path with start (circle) and end
+    (X) markers, periodic direction arrows, and an end-position label.
+    Saves the figure to ``output_file`` if provided, otherwise shows it
+    interactively.
 
     Parameters
     ----------
