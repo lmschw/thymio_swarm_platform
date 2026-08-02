@@ -7,20 +7,48 @@ from pathlib import Path
 
 from swarm_platform.controller.project import Project
 
-
 class SwarmClient:
 
-    def __init__(self, coordinator_ip, coordinator_port=9100):
+    """
+    Handles the connection to the coordinator, the optitrack system and the swarm daemon 
+    on the Raspberry Pi. Sends and retrieves messages as needed.
+    """
+
+    def __init__(self, coordinator_ip: str, coordinator_port: int=9100):
+        """
+        Params:
+            - coordinator_ip [string]: the IP address of the coordinator instance that registers the pis
+            - coordinator_port [int]: the port of the coordinator instance that handles the communication
+        """
         self.coordinator_ip = coordinator_ip
         self.coordinator_port = coordinator_port
+
+        # tracking is set up to be inactive by default and is activated if the experiment description requests it.
         self.tracker = None
         self.tracking_task = None
         self.tracking_verbose = False
 
     def project(self, repository: str, hosts: list = []):
+        """
+        Creates the active project based on the project respository link and the hosts.
+
+        Params:
+            - repository [string]: the link to the project repository to be cloned and run on all hosts
+            - hosts [list[string]] (optional): the hostnames of the pis that should create this project. 
+                                               Defaults to an empty list which corresponds to all available hosts.
+
+        Returns a Project instance.            
+        """
         return Project(self, repository, hosts)
 
     async def list_robots(self):
+        """
+        Retrieves all available robots from the coordinator.
+
+        Params: None.
+
+        Returns a list of all available robots.
+        """
         reader, writer = await asyncio.open_connection(
             self.coordinator_ip,
             self.coordinator_port,
@@ -37,6 +65,16 @@ class SwarmClient:
         return response["robots"]
 
     async def send(self, robot, message):
+        """
+        Sends a message to a single robot. Attempts to open the connection 10 times before failing.
+
+        Params:
+            - robot (dict): a dictionary containing the ip and port of the robot
+            - message (dict): a dictonary containing the details of the message, including message type
+
+        Returns:
+            A dictionary with the response from the robot.
+        """
         last_error = None
 
         for _ in range(10):
@@ -73,6 +111,15 @@ class SwarmClient:
             await writer.wait_closed()
 
     async def broadcast(self, message):
+        """
+        Broadcasts a message to all available robots.
+
+        Params:
+            - message (dict): a dictonary containing the details of the message, including message type
+
+        Returns:
+            A dictionary containing the response for every robot by its hostname.
+        """
         robots = await self.list_robots()
 
         responses = await asyncio.gather(
@@ -91,17 +138,30 @@ class SwarmClient:
         }
 
     async def broadcast_tracking(self, message):
+        """
+        Broadcasts an update with tracking information to the robots.
+
+        Params:
+            - message (dict): the dictionary containing the tracking information
+
+        Returns nothing.
+        """
         robots = await self.list_robots()
         for robot in robots.values():
             await self.send(robot, message)
 
-    async def collect_logs(
-        self,
-        session_id,
-        hosts,
-        output_dir,
-        delete_remote=True,
-    ):
+    async def collect_logs(self, session_id, hosts, output_dir, delete_remote=True):
+        """
+        Collects the logs from all the robots and saves them as .zip files.
+
+        Params:
+            - session_id (string): The id of the current experiment session, can be set to anything at experiment creation
+            - hosts (list): A list of the hostnames of the target pis, should be left empty to target all robots.
+            - output_dir (string): the path to the location where the logs should be stored
+            - delete_remote (boolean) [optional]: whether the logs on the pis should be deleted or kept after collecting them
+
+        Returns nothing.
+        """
         robots = await self.list_robots()
 
         output_dir.mkdir(
@@ -141,13 +201,18 @@ class SwarmClient:
             *tasks
         )
 
-    async def _collect_logs_from_robot(
-        self,
-        robot,
-        session_id,
-        destination,
-        delete=False,
-    ):
+    async def _collect_logs_from_robot(self, robot, session_id, destination, delete=False):
+        """
+        Collects the logs of an experiment session from a single robot.
+
+        Params:
+            - robot (dict): The robot from which the logs should be collected with its hostname, IP and port
+            - session_id (string): The id of the current experiment session, can be set to anything at experiment creation
+            - destination (string): the path to the location where the logs should be stored
+            - delete (boolean) [optional]: whether the logs on the pi should be deleted or kept after collecting them
+
+        Returns nothing.
+        """
         reader, writer = await asyncio.open_connection(
             robot["ip"],
             robot["port"],
@@ -212,6 +277,15 @@ class SwarmClient:
             await writer.wait_closed()
 
     async def delete_logs(self, session_id, hosts):
+        """
+        Deletes logs for an experiment session on the pis.
+
+        Params:
+            - session_id (string): The id of the current experiment session, can be set to anything at experiment creation
+            - hosts (list): A list of the hostnames of the target pis, should be left empty to target all robots.
+
+        Returns the responses from the pis.
+        """
         return await self.broadcast(
             {
                 "type": "delete_logs",
@@ -221,6 +295,14 @@ class SwarmClient:
         )
     
     async def identify(self, hostname: str):
+        """
+        Makes the thymio associated with the hostname light up red.
+
+        Params:
+            - hostname (string): the hostname of the target pi.
+
+        Returns nothing.
+        """
         responses = await self.broadcast({
             "type": "identify",
             "hostname": hostname,
@@ -231,6 +313,15 @@ class SwarmClient:
         )
 
     def _check_results(self, action, responses):
+        """
+        Checks the responses from the pis for errors. Raises a RuntimeError in case of error.
+
+        Params:
+            - action (string): What action was attempted
+            - responses (dict): The response from every pi.
+
+        Returns nothing.
+        """
         failures = []
         for robot_id, response in responses.items():
             if response.get("type") == "error":
@@ -243,6 +334,14 @@ class SwarmClient:
             )
         
     async def start_tracking(self, config):
+        """
+        Starts the optitrack tracking and begins the regular sending of tracking information.
+
+        Params:
+            - config (dict): the configuration of the experiment containing the tracking information such as the optitrack IP etc.
+
+        Returns nothing.
+        """
         from swarm_platform.tracking.optitrack_client import (
             OptitrackClient
         )
@@ -260,6 +359,11 @@ class SwarmClient:
         )
 
     async def tracking_loop(self):
+        """
+        Sends regular updates to the pis containing the optitrack tracking data.
+
+        Returns nothing.
+        """
 
         if self.tracking_verbose:
             print("[TRACKING LOOP] started", flush=True)

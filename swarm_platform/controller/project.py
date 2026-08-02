@@ -7,13 +7,19 @@ from swarm_platform.controller.session import SwarmSession
 
 class Project:
 
-    def __init__(
-        self,
-        client,
-        repository: str,
-        hosts: list,
-        local_root: str | Path = "projects",
-    ):
+    """
+    Manages the project code, the client and the hosts of the project.
+    """
+
+    def __init__(self, client, repository: str, hosts: list, local_root: str | Path = "projects"):
+        """
+        Params:
+            - client (SwarmClient): the client that manages the connection to the coordinator and the pis.
+            - repository (string): the link to the github repository with the project code
+            - hosts (list[string]): the list of hostnames of pis that are targetted. Pass an empty list for all available pis.
+            - local_root (string or Path): where the code should be stored.
+        """
+
         self.client = client
         self.repository = repository
         self.hosts = hosts
@@ -24,7 +30,11 @@ class Project:
 
 
     def _repo_name(self):
+        """
+        Determines the name of the repository from the link.
 
+        Returns the name of the repository (string).
+        """
         name = self.repository.rstrip("/").split("/")[-1]
 
         if name.endswith(".git"):
@@ -38,7 +48,11 @@ class Project:
     # --------------------------
 
     def clone_local(self):
+        """
+        Clone the project repository locally on the client machine.
 
+        Returns nothing.
+        """
         if self.local_path.exists():
             return
 
@@ -59,7 +73,11 @@ class Project:
 
 
     def update_local(self):
+        """
+        Updates the local copy of the project github repository.
 
+        Returns nothing.
+        """
         if not self.local_path.exists():
             self.clone_local()
             return
@@ -76,7 +94,11 @@ class Project:
 
 
     def load_config(self):
+        """
+        Loads the project config that was passed at instantiation.
 
+        Returns nothing.
+        """
         if self.config is not None:
             return
 
@@ -95,7 +117,14 @@ class Project:
 
 
     def experiment_config(self, name):
+        """
+        Retrieves the config for a specific experiment.
 
+        Params:
+            - name (string): the name of the experiment.
+
+        Returns the config. Raises a KeyError if the experiment does not exist in the config.
+        """
         self.load_config()
 
         try:
@@ -109,7 +138,11 @@ class Project:
 
     @property
     def tracking(self):
+        """
+        Checks if tracking is enabled for the current experiment.
 
+        Returns boolean whether position tracking is enabled.
+        """
         self.load_config()
 
         return self.config.get(
@@ -122,7 +155,11 @@ class Project:
     # --------------------------
 
     async def install(self):
+        """
+        Clones and installs the project repository on the pis.
 
+        Returns nothing.
+        """
         responses = await self.client.broadcast({
             "type": "clone_project",
             "repository": self.repository,
@@ -140,7 +177,11 @@ class Project:
 
 
     async def update(self):
+        """
+        Pulls from the remote github repository and thereby updates the project code on the pis.
 
+        Returns nothing.
+        """
         responses = await self.client.broadcast({
             "type": "update_project",
             "hosts": self.hosts,
@@ -159,7 +200,11 @@ class Project:
 
 
     async def activate(self):
+        """
+        Activates the project on all pis or on the specified subset of hosts.
 
+        Returns nothing.
+        """
         responses = await self.client.broadcast({
             "type": "activate_project",
             "hosts": self.hosts,
@@ -172,7 +217,14 @@ class Project:
 
 
     def session(self, name=None):
+        """
+        Creates a SwarmSession object for the current project.
 
+        Params:
+            - name (string): the name of the session.
+        
+        Returns the SwarmSession object.
+        """
         return SwarmSession(
             self.client,
             project=self,
