@@ -10,6 +10,7 @@ import zipfile
 import shutil
 from typing import Any, Dict, Optional
 
+from swarm_platform.config import COORDINATOR_IP, COORDINATOR_PORT
 from swarm_platform.protocol.codec import encode, decode
 from swarm_platform.robot.robot import Robot
 from swarm_platform.projects.manager import ProjectManager
@@ -31,18 +32,19 @@ class SwarmDaemon:
     def __init__(self) -> None:
         """Initialize the daemon, its project manager, robot handle, and internal state.
 
-        Reads the coordinator address and port from the
+        Reads the coordinator address and port from
+        ``swarm_platform.config`` (itself overridable via the
         ``SWARM_COORDINATOR``/``SWARM_COORDINATOR_PORT`` environment
-        variables (falling back to defaults), sets up the active project
-        manager, the robot handle, the log manager, and all of the mutable
-        state used to track the currently running experiment.
+        variables), sets up the active project manager, the robot handle,
+        the log manager, and all of the mutable state used to track the
+        currently running experiment.
         """
         print("cwd =", Path.cwd(), flush=True)
         print("__file__ =", __file__, flush=True)
         print("git root =", Path(__file__).resolve().parents[2], flush=True)
 
-        self.coordinator_ip = os.getenv("SWARM_COORDINATOR", "10.15.2.63")
-        self.coordinator_port = int(os.getenv("SWARM_COORDINATOR_PORT", "9100"))
+        self.coordinator_ip = COORDINATOR_IP
+        self.coordinator_port = COORDINATOR_PORT
 
         self.project_manager = ProjectManager(
             Path("active_project")

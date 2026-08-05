@@ -8,6 +8,7 @@ pause/resume/stop it before collecting logs.
 
 import asyncio
 
+from swarm_platform.config import COORDINATOR_IP
 from swarm_platform.controller.client import SwarmClient
 
 
@@ -19,7 +20,7 @@ async def main() -> None:
     the user stops the session, after which logs are collected.
     """
 
-    client = SwarmClient("10.15.2.63")
+    client = SwarmClient(COORDINATOR_IP)
     hosts = []
 
     #await save_robot_info_to_csv(client)

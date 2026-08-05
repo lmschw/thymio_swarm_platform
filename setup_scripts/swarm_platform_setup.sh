@@ -9,6 +9,12 @@ echo "===== Swarm Platform Setup ====="
 PROJECT_DIR="$(pwd)"
 CURRENT_USER="$USER"
 
+# Coordinator address, centralised here so it only needs to be overridden in
+# one place; matches the default in swarm_platform/config.py. Override by
+# running e.g. `SWARM_COORDINATOR=192.168.1.10 ./setup_scripts/swarm_platform_setup.sh`.
+SWARM_COORDINATOR="${SWARM_COORDINATOR:-10.15.2.63}"
+SWARM_COORDINATOR_PORT="${SWARM_COORDINATOR_PORT:-9100}"
+
 #
 # Install uv if necessary
 #
@@ -32,8 +38,8 @@ echo "Using uv: ${UV_BIN}"
 # Create environment config
 #
 sudo tee /etc/swarm-platform.conf >/dev/null <<EOF
-SWARM_COORDINATOR=10.15.2.63
-SWARM_COORDINATOR_PORT=9100
+SWARM_COORDINATOR=${SWARM_COORDINATOR}
+SWARM_COORDINATOR_PORT=${SWARM_COORDINATOR_PORT}
 UV_BIN=${UV_BIN}
 EOF
 
@@ -80,7 +86,7 @@ echo
 echo "================================="
 echo "Swarm Platform installed"
 echo "Daemon service enabled"
-echo "Coordinator: 10.15.2.63:9100"
+echo "Coordinator: ${SWARM_COORDINATOR}:${SWARM_COORDINATOR_PORT}"
 echo "Project: ${PROJECT_DIR}"
 echo "Using uv: ${UV_BIN}"
 echo "================================="

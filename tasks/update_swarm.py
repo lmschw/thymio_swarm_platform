@@ -2,6 +2,7 @@
 
 import asyncio
 
+from swarm_platform.config import COORDINATOR_IP
 from swarm_platform.controller.client import SwarmClient
 
 
@@ -12,7 +13,7 @@ async def main() -> None:
     whole swarm, and prints any responses returned by the broadcast.
     """
 
-    client = SwarmClient("10.15.2.63")  # coordinator IP
+    client = SwarmClient(COORDINATOR_IP)
 
     robots = await client.list_robots()
 

@@ -9,9 +9,9 @@ via exception), attempts to stop the session as a cleanup step.
 
 import asyncio
 
+from swarm_platform.config import COORDINATOR_IP
 from swarm_platform.controller.client import SwarmClient
 
-COORDINATOR_IP = "10.15.2.63"
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
 SESSION_NAME = "communication_test-run"
 EXPERIMENT_NAME = "communication_test"
