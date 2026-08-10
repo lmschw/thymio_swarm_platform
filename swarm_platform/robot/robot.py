@@ -211,27 +211,6 @@ class Robot:
         await self.connection.process_messages()
         return self.connection.node["temperature"]
 
-    # Sounds
-    async def system_sound(self, sound: int) -> None:
-        """
-        Plays (or stops) a system sound.
-
-        Note:
-            This currently only prints the requested sound id; it does
-            not yet trigger playback on the robot.
-
-        Args:
-            sound: The id of the system sound to play, or ``-1`` to stop.
-        """
-        if sound != -1:
-            print("system.sound", sound)
-
-    async def sound_stop(self) -> None:
-        """
-        Stops any currently playing system sound.
-        """
-        await self.system_sound(-1)
-
     async def state(self) -> RobotState:
         """
         Reads the robot's full sensor/actuator state.
