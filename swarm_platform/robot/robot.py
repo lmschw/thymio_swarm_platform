@@ -1,12 +1,14 @@
 import asyncio
 import socket
 from typing import Any, Dict, List, Optional, Tuple
+import math
 
 from .connection import ThymioConnection
 from .state import RobotState
 from ..protocol.command import RobotCommand
 from ..utils.config import RobotConfig
 from ..tracking.pose import Pose
+from ..tracking.relative_pose import RelativePose
 
 class Robot:
 
@@ -301,3 +303,226 @@ class Robot:
         return dict(
             self.global_poses
         )
+
+    async def get_distance_to(self, hostname: str) -> Optional[float]:
+        """
+        Get the horizontal distance from this robot to another tracked robot.
+
+        Args:
+            hostname: Hostname of the other robot.
+
+        Returns:
+            Distance in the same units as the OptiTrack position data,
+            or None if either pose is unavailable.
+        """
+        own_pose = await self.get_global_pose()
+        other_pose = self.global_poses.get(hostname)
+
+        if own_pose is None or other_pose is None:
+            return None
+
+        dx = other_pose.position[0] - own_pose.position[0]
+        dy = other_pose.position[1] - own_pose.position[1]
+
+        return math.hypot(dx, dy)
+
+
+    async def get_bearing_to(self, hostname: str) -> Optional[float]:
+        """
+        Get the bearing from this robot to another robot.
+
+        The bearing is the signed horizontal angle, in radians, from this
+        robot's forward direction to the other robot.
+
+        Positive values are counter-clockwise.
+
+        Args:
+            hostname: Hostname of the other robot.
+
+        Returns:
+            Bearing in radians in the range [-pi, pi], or None if either
+            pose is unavailable.
+        """
+        own_pose = await self.get_global_pose()
+        other_pose = self.global_poses.get(hostname)
+
+        if own_pose is None or other_pose is None:
+            return None
+
+        dx = other_pose.position[0] - own_pose.position[0]
+        dy = other_pose.position[1] - own_pose.position[1]
+
+        target_angle = math.atan2(dy, dx)
+        own_yaw = self._yaw_from_quaternion(own_pose.orientation)
+
+        return self._normalize_angle(target_angle - own_yaw)
+
+
+    async def get_orientation_difference(
+        self,
+        hostname: str,
+    ) -> Optional[float]:
+        """
+        Get the horizontal orientation difference between this robot and
+        another robot.
+
+        Positive values mean the other robot is rotated counter-clockwise
+        relative to this robot.
+
+        Args:
+            hostname: Hostname of the other robot.
+
+        Returns:
+            Orientation difference in radians in the range [-pi, pi],
+            or None if either pose is unavailable.
+        """
+        own_pose = await self.get_global_pose()
+        other_pose = self.global_poses.get(hostname)
+
+        if own_pose is None or other_pose is None:
+            return None
+
+        own_yaw = self._yaw_from_quaternion(own_pose.orientation)
+        other_yaw = self._yaw_from_quaternion(other_pose.orientation)
+
+        return self._normalize_angle(other_yaw - own_yaw)
+
+
+    @staticmethod
+    def _yaw_from_quaternion(
+        quaternion: Tuple[float, float, float, float],
+    ) -> float:
+        """
+        Extract yaw from an (x, y, z, w) quaternion.
+
+        Returns:
+            Yaw in radians.
+        """
+        x, y, z, w = quaternion
+
+        sin_yaw = 2.0 * (w * z + x * y)
+        cos_yaw = 1.0 - 2.0 * (y * y + z * z)
+
+        return math.atan2(sin_yaw, cos_yaw)
+
+
+    @staticmethod
+    def _normalize_angle(angle: float) -> float:
+        """Normalize an angle to [-pi, pi]."""
+        return (angle + math.pi) % (2.0 * math.pi) - math.pi
+
+    async def get_relative_poses(
+        self,
+        hostnames: Optional[List[str]] = None,
+    ) -> Dict[str, RelativePose]:
+        """
+        Computes the relative pose of other tracked robots.
+
+        Args:
+            hostnames:
+                Optional list of hostnames to include. If ``None``, all
+                other tracked robots are included.
+
+        Returns:
+            A mapping from hostname to RelativePose.
+        """
+        poses = await self.get_all_global_poses()
+
+        own_pose = poses.get(self.hostname)
+        if own_pose is None:
+            return {}
+
+        own_x, own_y, _ = own_pose.position
+        own_yaw = self._quaternion_to_yaw(own_pose.orientation)
+
+        # Use a set for efficient membership checks.
+        hostname_filter = set(hostnames) if hostnames is not None else None
+
+        relative_poses: Dict[str, RelativePose] = {}
+
+        for hostname, pose in poses.items():
+            # Never include ourselves.
+            if hostname == self.hostname:
+                continue
+
+            # If a filter was provided, only include requested robots.
+            if hostname_filter is not None and hostname not in hostname_filter:
+                continue
+
+            other_x, other_y, _ = pose.position
+
+            dx = other_x - own_x
+            dy = other_y - own_y
+
+            distance = math.hypot(dx, dy)
+
+            global_bearing = math.atan2(dy, dx)
+
+            bearing = self._normalize_angle(
+                global_bearing - own_yaw
+            )
+
+            other_yaw = self._quaternion_to_yaw(
+                pose.orientation
+            )
+
+            orientation_difference = self._normalize_angle(
+                other_yaw - own_yaw
+            )
+
+            relative_poses[hostname] = RelativePose(
+                distance=distance,
+                bearing=bearing,
+                orientation_difference=orientation_difference,
+            )
+
+        return relative_poses
+
+    async def get_neighbours(
+        self,
+        perception_range: float,
+    ) -> List[str]:
+        """
+        Returns all robots within perception range.
+
+        Args:
+            perception_range:
+                Maximum distance at which another robot is considered
+                a neighbour.
+
+        Returns:
+            A list of hostnames of neighbouring robots.
+        """
+        relative_poses = await self.get_relative_poses()
+
+        return [
+            hostname
+            for hostname, relative_pose in relative_poses.items()
+            if relative_pose.distance <= perception_range
+        ]
+
+
+    @staticmethod
+    def _quaternion_to_yaw(
+        quaternion: tuple[float, float, float, float],
+    ) -> float:
+        """
+        Convert an (x, y, z, w) quaternion to yaw.
+
+        Returns:
+            Yaw angle in radians.
+        """
+        x, y, z, w = quaternion
+
+        sin_yaw = 2.0 * (w * z + x * y)
+        cos_yaw = 1.0 - 2.0 * (y * y + z * z)
+
+        return math.atan2(sin_yaw, cos_yaw)
+
+
+    @staticmethod
+    def _normalize_angle(angle: float) -> float:
+        """
+        Normalize an angle to [-pi, pi].
+        """
+        return (angle + math.pi) % (2.0 * math.pi) - math.pi
