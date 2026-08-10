@@ -279,7 +279,7 @@ class Robot:
         intensities = self.connection.node.var.get("prox.comm.rx._intensities")
         front_intensity = intensities[0] + intensities[1] + intensities[2] + intensities[3] + intensities[4]
         rear_intensity = intensities[5] + intensities[6]
-        return rx, intensities, front_intensity, rear_intensity
+        return rx[0], intensities, front_intensity, rear_intensity
 
     async def get_global_pose(self) -> Optional[Pose]:
         """
