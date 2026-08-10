@@ -3,7 +3,7 @@ import json
 import time
 from typing import Any, Dict
 
-ROBOTS: Dict[str, Dict[str, Any]] = {}  # robot_id -> {ip, port, last_seen}
+ROBOTS: Dict[str, Dict[str, Any]] = {}  # robot_id -> {ip, port, last_seen, capabilities}
 
 
 HEARTBEAT_TIMEOUT = 30  # seconds
@@ -52,7 +52,8 @@ async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> 
         ROBOTS[msg["robot_id"]] = {
             "ip": msg["ip"],
             "port": msg["port"],
-            "last_seen": time.time()
+            "last_seen": time.time(),
+            "capabilities": msg.get("capabilities", {}),
         }
 
         print(f"[REGISTER] {msg['robot_id']} -> {msg['ip']}:{msg['port']}")

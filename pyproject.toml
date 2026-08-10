@@ -17,6 +17,13 @@ dependencies = [
     "matplotlib>=3.11.1",
 ]
 
+[project.optional-dependencies]
+# Only needed on Pis with a camera attached. Install via the system package
+# manager on Raspberry Pi OS instead where possible (see
+# setup_scripts/add_camera_support.sh) -- picamera2 is tied to the system
+# libcamera stack and isn't reliably installable as a plain pip wheel.
+camera = ["picamera2"]
+
 [tool.setuptools.packages.find]
 include = ["swarm_platform*"]
 

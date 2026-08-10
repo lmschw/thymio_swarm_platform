@@ -9,6 +9,7 @@ This repository allows you to run a swarm of Thymio II Wireless robots, each wit
 - Project-based experiments: experiment code lives in its own git repository (independent of this platform) and is installed/updated on the controller and every Pi with a couple of method calls. Multiple experiments can live in the same project and are selected by name at run time.
 - Full session lifecycle: start, pause, resume and stop an experiment across the whole swarm (or a subset of hosts) with a single call, each broadcast concurrently to all targeted robots.
 - A high-level `Robot` abstraction so experiment code doesn't need to deal with Aseba or `tdmclient` directly: motors, top LED, ground/proximity/accelerometer/button/temperature sensors, and inter-robot communication over the Thymio's proximity sensors (`send`/`receive`).
+- Optional Pi camera support: robots with a camera attached can capture still images (`robot.camera_capture()`) for use in experiments; robots without one just run without it — no configuration needed.
 - Per-robot CSV logging of state/commands during a run, collected from every agent after the experiment and collated into a single aggregated CSV file for analysis.
 - Remote code updates: pushing an update to a project (or to the platform itself) pulls the latest code onto every Pi and restarts the daemon automatically.
 - Optional OptiTrack integration: robots receive their live global pose (position + orientation) from a motion-capture system during an experiment.
@@ -79,6 +80,9 @@ Whenever the project or the platform code on a Pi is updated (`update_project` /
 **Optional — motion capture**:
 - An OptiTrack/Motive setup streaming over NatNet, reachable from the controller machine (tracking data is broadcast to the robots by the controller, not read directly by the Pis)
 
+**Optional — camera**:
+- A Raspberry Pi camera module on any robot that needs one, plus `picamera2` (installed via `apt`, see [Camera (optional)](#camera-optional)) — no camera hardware or dependency is required on robots that don't use one.
+
 Python dependencies (`tdmclient`, `numpy`, `pyyaml`, `pandas`, `natnet`, `matplotlib`, …) are declared in [pyproject.toml](pyproject.toml) and installed automatically by `uv sync`.
 
 ## Getting started
@@ -111,6 +115,18 @@ cd thymio_swarm_platform
 `swarm_platform_setup.sh` writes the coordinator's address to `/etc/swarm-platform.conf` (as `SWARM_COORDINATOR`/`SWARM_COORDINATOR_PORT`) — edit that file if your coordinator isn't at the default IP baked into the script, then restart the service with `sudo systemctl restart swarm-daemon`.
 
 Each Pi's hostname is used as its robot id throughout the platform, so give each one a distinct, meaningful hostname (e.g. `thymio-01`, `thymio-02`, …) before running the setup.
+
+#### Camera (optional)
+
+If a Pi has a camera module attached, run the following once on that Pi (in addition to the steps above) to install `picamera2` and give the project's virtual environment access to it:
+
+```bash
+./setup_scripts/add_camera_support.sh
+```
+
+This is also folded into `raspberry_pi_initial_setup.sh`/`swarm_platform_setup.sh`, so it's unnecessary on a freshly-provisioned Pi — it exists for retrofitting a Pi that's already set up, without repeating the rest of the install. The daemon auto-detects the camera at startup: `robot.has_camera` reflects whether one was found, and `await robot.camera_capture(path=...)` (see below) works regardless of whether the machine you're reading this on has a camera attached.
+
+Run `./setup_scripts/verify_camera.sh` afterwards to confirm the camera is detected, importable, capturable, and (if the daemon is running) actually reported by it — it leaves a test JPEG at `/tmp/camera_test_capture.jpg` for a manual visual check.
 
 ### 3. Set up the controller
 
@@ -151,7 +167,7 @@ Each entry under `experiments` points to a class (`module.ClassName`, importable
 - `async def run(self)` — the main control loop; runs until the experiment stops or is cancelled.
 - `async def pause(self)` / `async def resume(self)` / `async def stop(self)` — lifecycle hooks called on the corresponding session commands.
 
-`robot` is a [`Robot`](swarm_platform/robot/robot.py) instance giving access to `drive()`, `stop()`, `top_led()`, the various sensor readers, `send()`/`receive()` for inter-robot communication, and `get_global_pose()`/`get_all_global_poses()` if tracking is enabled. `logger` is a `SessionLogger` (see [Logging](#logging)) that the experiment can call `.log(state, command)` on every tick to persist a CSV row.
+`robot` is a [`Robot`](swarm_platform/robot/robot.py) instance giving access to `drive()`, `stop()`, `top_led()`, the various sensor readers, `send()`/`receive()` for inter-robot communication, `get_global_pose()`/`get_all_global_poses()` if tracking is enabled, and — on robots with a camera attached — `has_camera` / `await camera_capture(path=...)` to grab a still image. `logger` is a `SessionLogger` (see [Logging](#logging)) that the experiment can call `.log(state, command)` on every tick to persist a CSV row.
 
 ### 5. Write a controller script
 

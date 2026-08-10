@@ -13,3 +13,7 @@ class RobotConnectionError(Exception):
         """
         super().__init__(message)
         self.cause = cause
+
+
+class CameraError(Exception):
+    """Raised when a camera operation is attempted but no camera is available."""

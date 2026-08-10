@@ -103,6 +103,7 @@ class SwarmDaemon:
             return {
                 "type": "status",
                 "running": self.running_experiment,
+                "camera": self.robot.has_camera,
             }
         
         if t in ["pause", "resume", "stop"]:
@@ -383,6 +384,7 @@ class SwarmDaemon:
             "robot_id": socket.gethostname(),
             "ip": self.get_ip(),
             "port": 9000,
+            "capabilities": {"camera": self.robot.has_camera},
         }
 
         reader, writer = await asyncio.open_connection(

@@ -3,6 +3,7 @@ import socket
 from typing import Any, Dict, List, Optional, Tuple
 import math
 
+from .camera import Camera
 from .connection import ThymioConnection
 from .state import RobotState
 from ..protocol.command import RobotCommand
@@ -34,6 +35,7 @@ class Robot:
         """
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
+        self.camera = Camera()
         self.hostname = socket.gethostname()
         self.tracker = tracker
         self.global_poses: Dict[str, Pose] = {}
@@ -68,13 +70,20 @@ class Robot:
     async def connect(self) -> None:
         """
         Connects to the underlying Thymio node.
+
+        Also attempts to start the optional Pi camera, if one is
+        attached. Camera detection is best-effort and never raises, so a
+        robot with no camera (or a failed camera) still connects normally.
         """
         await self.connection.connect()
+        await self.camera.start()
 
     async def disconnect(self) -> None:
         """
-        Disconnects from the underlying Thymio node.
+        Disconnects from the underlying Thymio node and releases the
+        camera, if one was started.
         """
+        await self.camera.stop()
         await self.connection.disconnect()
 
     async def _set_variables(self, var_dict: Dict[str, List[int]], timeout: float = 1.0) -> None:
@@ -212,6 +221,33 @@ class Robot:
         """
         await self.connection.process_messages()
         return self.connection.node["temperature"]
+
+    # Camera
+    @property
+    def has_camera(self) -> bool:
+        """
+        Whether this robot has a working Pi camera attached.
+
+        Returns:
+            True if a camera was detected and started successfully.
+        """
+        return self.camera.available
+
+    async def camera_capture(self, path: Optional[str] = None) -> bytes:
+        """
+        Captures a still image from the robot's Pi camera.
+
+        Args:
+            path: If given, the captured JPEG bytes are also written to
+                this filesystem path.
+
+        Returns:
+            The captured frame, JPEG-encoded.
+
+        Raises:
+            CameraError: If this robot has no camera available.
+        """
+        return await self.camera.capture(path)
 
     async def state(self) -> RobotState:
         """

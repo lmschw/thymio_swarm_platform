@@ -32,6 +32,11 @@ echo "Using uv: ${UV_BIN}"
 #
 # Install project dependencies
 #
+# The venv is created with access to system site-packages so that, if the
+# camera-enabled apt packages have been installed (see
+# setup_scripts/add_camera_support.sh), picamera2/libcamera are importable
+# from within it.
+[ -d .venv ] || "${UV_BIN}" venv --system-site-packages
 "${UV_BIN}" sync
 
 #
