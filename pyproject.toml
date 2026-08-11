@@ -22,7 +22,7 @@ dependencies = [
 # manager on Raspberry Pi OS instead where possible (see
 # setup_scripts/add_camera_support.sh) -- picamera2 is tied to the system
 # libcamera stack and isn't reliably installable as a plain pip wheel.
-camera = ["picamera2"]
+# camera = ["picamera2"]
 
 [tool.setuptools.packages.find]
 include = ["swarm_platform*"]
