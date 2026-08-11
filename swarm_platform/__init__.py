@@ -1,2 +1,2 @@
-from .robot.robot import Robot
-from .utils.config import RobotConfig
+from .robot.robot import Robot as Robot
+from .utils.config import RobotConfig as RobotConfig
