@@ -340,169 +340,62 @@ class Robot:
             self.global_poses
         )
 
-    async def get_distance_to(self, hostname: str) -> Optional[float]:
-        """
-        Get the horizontal distance from this robot to another tracked robot.
-
-        Args:
-            hostname: Hostname of the other robot.
-
-        Returns:
-            Distance in the same units as the OptiTrack position data,
-            or None if either pose is unavailable.
-        """
-        own_pose = await self.get_global_pose()
-        other_pose = self.global_poses.get(hostname)
-
-        if own_pose is None or other_pose is None:
-            return None
-
-        dx = other_pose.position[0] - own_pose.position[0]
-        dz = other_pose.position[2] - own_pose.position[2]
-
-        return math.hypot(dx, dz)
-
-
-    async def get_bearing_to(self, hostname: str) -> Optional[float]:
-        """
-        Get the bearing from this robot to another robot.
-
-        The bearing is the signed horizontal angle, in radians, from this
-        robot's forward direction to the other robot.
-
-        Positive values are counter-clockwise.
-
-        Args:
-            hostname: Hostname of the other robot.
-
-        Returns:
-            Bearing in radians in the range [-pi, pi], or None if either
-            pose is unavailable.
-        """
-        own_pose = await self.get_global_pose()
-        other_pose = self.global_poses.get(hostname)
-
-        if own_pose is None or other_pose is None:
-            return None
-
-        dx = other_pose.position[0] - own_pose.position[0]
-        dz = other_pose.position[2] - own_pose.position[2]
-
-        target_angle = math.atan2(dz, dx)
-        own_yaw = self._yaw_from_quaternion(own_pose.orientation)
-
-        return self._normalize_angle(target_angle - own_yaw)
-
-
-    async def get_orientation_difference(
+    def quaternion_to_yaw(
         self,
-        hostname: str,
-    ) -> Optional[float]:
-        """
-        Get the horizontal orientation difference between this robot and
-        another robot.
-
-        Positive values mean the other robot is rotated counter-clockwise
-        relative to this robot.
-
-        Args:
-            hostname: Hostname of the other robot.
-
-        Returns:
-            Orientation difference in radians in the range [-pi, pi],
-            or None if either pose is unavailable.
-        """
-        own_pose = await self.get_global_pose()
-        other_pose = self.global_poses.get(hostname)
-
-        if own_pose is None or other_pose is None:
-            return None
-
-        own_yaw = self._yaw_from_quaternion(own_pose.orientation)
-        other_yaw = self._yaw_from_quaternion(other_pose.orientation)
-
-        return self._normalize_angle(other_yaw - own_yaw)
-
-
-    @staticmethod
-    def _yaw_from_quaternion(
-        quaternion: Tuple[float, float, float, float],
+        quaternion: tuple[float, float, float, float]
     ) -> float:
-        """
-        Extract yaw from an (x, y, z, w) quaternion.
-
-        Returns:
-            Yaw in radians.
-        """
+        """Convert an (x, y, z, w) quaternion to yaw in radians."""
         x, y, z, w = quaternion
 
-        sin_yaw = 2.0 * (w * z + x * y)
-        cos_yaw = 1.0 - 2.0 * (y * y + z * z)
+        return math.atan2(
+            2.0 * (w * z + x * y),
+            1.0 - 2.0 * (y * y + z * z),
+        )
 
-        return math.atan2(sin_yaw, cos_yaw)
 
-
-    @staticmethod
-    def _normalize_angle(angle: float) -> float:
+    def normalize_angle(self, angle: float) -> float:
         """Normalize an angle to [-pi, pi]."""
         return (angle + math.pi) % (2.0 * math.pi) - math.pi
 
-    async def get_relative_poses(
+
+    def get_relative_poses(
         self,
-        hostnames: Optional[List[str]] = None,
+        poses: Dict[str, Pose],
+        own_hostname: str,
     ) -> Dict[str, RelativePose]:
-        """
-        Computes the relative pose of other tracked robots.
 
-        Args:
-            hostnames:
-                Optional list of hostnames to include. If ``None``, all
-                other tracked robots are included.
+        own_pose = poses[own_hostname]
+        ox, _, oz = own_pose.position
 
-        Returns:
-            A mapping from hostname to RelativePose.
-        """
-        poses = await self.get_all_global_poses()
+        own_yaw = self.quaternion_to_yaw(own_pose.orientation)
 
-        own_pose = poses.get(self.hostname)
-        if own_pose is None:
-            return {}
-
-        own_x, own_y, own_z = own_pose.position
-        own_yaw = self._quaternion_to_yaw(own_pose.orientation)
-
-        # Use a set for efficient membership checks.
-        hostname_filter = set(hostnames) if hostnames is not None else None
-
-        relative_poses: Dict[str, RelativePose] = {}
+        relative_poses = {}
 
         for hostname, pose in poses.items():
-            # Never include ourselves.
-            if hostname == self.hostname:
+            if hostname == own_hostname:
                 continue
 
-            # If a filter was provided, only include requested robots.
-            if hostname_filter is not None and hostname not in hostname_filter:
-                continue
+            x, y, z = pose.position
 
-            other_x, other_y, other_z = pose.position
+            # Position difference
+            dx = x - ox
+            dz = z - oz
 
-            dx = other_x - own_x
-            dz = other_z - own_z
-
-            distance = math.hypot(dx, dz)
-
-            global_bearing = math.atan2(dz, dx)
-
-            bearing = self._normalize_angle(
-                global_bearing - own_yaw
+            # Distance
+            distance = math.sqrt(
+                dx**2 + dz**2
             )
 
-            other_yaw = self._quaternion_to_yaw(
-                pose.orientation
+            # Bearing in world frame
+            bearing = self.normalize_angle(
+                math.atan2(dz, dx) - own_yaw
             )
 
-            orientation_difference = self._normalize_angle(
+            # Other robot's yaw
+            other_yaw = self.quaternion_to_yaw(pose.orientation)
+
+            # Orientation difference
+            orientation_difference = self.normalize_angle(
                 other_yaw - own_yaw
             )
 
