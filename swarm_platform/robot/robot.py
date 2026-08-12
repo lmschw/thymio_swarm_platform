@@ -364,6 +364,7 @@ class Robot:
 
         poses = await self.get_all_global_poses()
         own_pose = await self.get_global_pose()
+        print("OWN POSE", own_pose)
         ox, _, oz = own_pose.position
 
         own_yaw = self.quaternion_to_yaw(own_pose.orientation)
@@ -371,6 +372,8 @@ class Robot:
         relative_poses = {}
 
         for hostname, pose in poses.items():
+            print("HOSTNAME", hostname)
+            print("OTHER POSITION", pose)
             x, y, z = pose.position
 
             # Position difference
