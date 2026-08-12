@@ -361,7 +361,7 @@ class Robot:
 
     async def get_relative_poses(
         self,
-        hostnames: list
+        hostnames: Optional[List[str]] = None,
     ) -> Dict[str, RelativePose]:
 
         poses = await self.get_all_global_poses()
@@ -374,9 +374,20 @@ class Robot:
 
         relative_poses = {}
 
+        # Use a set for efficient membership checks.
+        hostname_filter = set(hostnames) if hostnames is not None else None
+
+        relative_poses: Dict[str, RelativePose] = {}
+
         for hostname, pose in poses.items():
-            if hostnames and hostname not in hostnames:
+            # Never include ourselves.
+            if hostname == self.hostname:
                 continue
+
+            # If a filter was provided, only include requested robots.
+            if hostname_filter is not None and hostname not in hostname_filter:
+                continue
+            
             x, y, z = pose.position
 
             # Position difference
