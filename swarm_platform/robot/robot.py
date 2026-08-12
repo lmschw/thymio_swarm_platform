@@ -364,9 +364,9 @@ class Robot:
     ) -> Dict[str, RelativePose]:
 
         poses = await self.get_all_global_poses()
-        print("POSES in Rel", poses)
         own_pose = poses.get(self.hostname)
-        print("OWN POSE", own_pose)
+        if own_pose is None:
+            return {}
         ox, _, oz = own_pose.position
 
         own_yaw = self.quaternion_to_yaw(own_pose.orientation)
