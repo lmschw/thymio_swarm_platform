@@ -361,6 +361,7 @@ class Robot:
 
     async def get_relative_poses(
         self,
+        hostnames: list
     ) -> Dict[str, RelativePose]:
 
         poses = await self.get_all_global_poses()
@@ -374,8 +375,8 @@ class Robot:
         relative_poses = {}
 
         for hostname, pose in poses.items():
-            print("HOSTNAME", hostname)
-            print("OTHER POSITION", pose)
+            if hostnames and hostname not in hostnames:
+                continue
             x, y, z = pose.position
 
             # Position difference
