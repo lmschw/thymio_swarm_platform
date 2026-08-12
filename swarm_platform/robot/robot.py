@@ -358,13 +358,12 @@ class Robot:
         return (angle + math.pi) % (2.0 * math.pi) - math.pi
 
 
-    def get_relative_poses(
+    async def get_relative_poses(
         self,
-        poses: Dict[str, Pose],
-        own_hostname: str,
     ) -> Dict[str, RelativePose]:
 
-        own_pose = poses[own_hostname]
+        poses = await self.get_all_global_poses()
+        own_pose = await self.get_global_pose()
         ox, _, oz = own_pose.position
 
         own_yaw = self.quaternion_to_yaw(own_pose.orientation)
@@ -372,9 +371,6 @@ class Robot:
         relative_poses = {}
 
         for hostname, pose in poses.items():
-            if hostname == own_hostname:
-                continue
-
             x, y, z = pose.position
 
             # Position difference
