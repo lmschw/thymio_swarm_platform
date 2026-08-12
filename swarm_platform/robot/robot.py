@@ -326,6 +326,7 @@ class Robot:
             ``None`` if it is not present in ``global_poses``.
         """
         poses = self.global_poses
+        print("POSES", poses)
         return poses.get(self.hostname)
 
     async def get_all_global_poses(self) -> Dict[str, Pose]:
