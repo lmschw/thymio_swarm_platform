@@ -364,7 +364,8 @@ class Robot:
     ) -> Dict[str, RelativePose]:
 
         poses = await self.get_all_global_poses()
-        own_pose = await self.get_global_pose()
+        print("POSES in Rel", poses)
+        own_pose = poses.get(self.hostname)
         print("OWN POSE", own_pose)
         ox, _, oz = own_pose.position
 
