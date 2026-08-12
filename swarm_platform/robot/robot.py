@@ -358,9 +358,9 @@ class Robot:
             return None
 
         dx = other_pose.position[0] - own_pose.position[0]
-        dy = other_pose.position[1] - own_pose.position[1]
+        dz = other_pose.position[2] - own_pose.position[2]
 
-        return math.hypot(dx, dy)
+        return math.hypot(dx, dz)
 
 
     async def get_bearing_to(self, hostname: str) -> Optional[float]:
@@ -386,9 +386,9 @@ class Robot:
             return None
 
         dx = other_pose.position[0] - own_pose.position[0]
-        dy = other_pose.position[1] - own_pose.position[1]
+        dz = other_pose.position[2] - own_pose.position[2]
 
-        target_angle = math.atan2(dy, dx)
+        target_angle = math.atan2(dz, dx)
         own_yaw = self._yaw_from_quaternion(own_pose.orientation)
 
         return self._normalize_angle(target_angle - own_yaw)
@@ -468,7 +468,7 @@ class Robot:
         if own_pose is None:
             return {}
 
-        own_x, own_y, _ = own_pose.position
+        own_x, own_y, own_z = own_pose.position
         own_yaw = self._quaternion_to_yaw(own_pose.orientation)
 
         # Use a set for efficient membership checks.
@@ -485,14 +485,14 @@ class Robot:
             if hostname_filter is not None and hostname not in hostname_filter:
                 continue
 
-            other_x, other_y, _ = pose.position
+            other_x, other_y, other_z = pose.position
 
             dx = other_x - own_x
-            dy = other_y - own_y
+            dz = other_z - own_z
 
-            distance = math.hypot(dx, dy)
+            distance = math.hypot(dx, dz)
 
-            global_bearing = math.atan2(dy, dx)
+            global_bearing = math.atan2(dz, dx)
 
             bearing = self._normalize_angle(
                 global_bearing - own_yaw
