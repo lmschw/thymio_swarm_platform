@@ -2,13 +2,13 @@
 
 Connects to the coordinator, installs and activates the
 `thymio_decision_making` project on a fixed set of hosts, starts the
-`active_inference_noisy_quality_switch` experiment session (active
-inference under elevated observation noise, with option 0/1 qualities
-swapping 60s into the run), and lets the user interactively pause/resume/stop
-it before collecting and deleting logs. The session is configured with a
-fixed EXPERIMENT_DURATION_SECONDS (5 minutes) so it stops itself even if
-nobody presses "s", keeping runs comparable. On exit (including via
-exception), attempts to stop the session as a cleanup step.
+`weighted_voter_baseline` experiment session (plain baseline, no elevated
+noise), sends a live quality swap via internal_update("swap") at
+EXPERIMENT_SWAP_SECONDS into the run, and lets the user interactively
+pause/resume/stop it before collecting and deleting logs. The session is
+configured with a fixed EXPERIMENT_DURATION_SECONDS so it stops itself
+even if nobody presses "s", keeping runs comparable. On exit (including
+via exception), attempts to stop the session as a cleanup step.
 """
 
 import asyncio
@@ -21,8 +21,8 @@ from swarm_platform.utils.unpack_results import (
 )
 
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
-SESSION_NAME = "weighted_voter_quality_switch-run"
-EXPERIMENT_NAME = "weighted_voter_quality_switch"
+SESSION_NAME = "weighted_voter_baseline-run"
+EXPERIMENT_NAME = "weighted_voter_baseline"
 HOSTS = ["thymio-01", 
         "thymio-03", 
         "thymio-04",
