@@ -349,8 +349,8 @@ class Robot:
         x, y, z, w = quaternion
 
         return math.atan2(
-            2.0 * (w * z + x * y),
-            1.0 - 2.0 * (y * y + z * z),
+            2.0 * (w * y + z * x),
+            1.0 - 2.0 * (x * x + y * y),
         )
 
 
@@ -456,8 +456,8 @@ class Robot:
         """
         x, y, z, w = quaternion
 
-        sin_yaw = 2.0 * (w * z + x * y)
-        cos_yaw = 1.0 - 2.0 * (y * y + z * z)
+        sin_yaw = 2.0 * (w * y + z * x)
+        cos_yaw = 1.0 - 2.0 * (x * x + y * y)
 
         return math.atan2(sin_yaw, cos_yaw)
 
