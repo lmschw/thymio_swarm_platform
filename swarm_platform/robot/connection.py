@@ -130,19 +130,6 @@ class ThymioConnection:
                 f"Failed to run prox.comm.enable: {error}"
             )
 
-        print("NODE TYPE:", type(self.node), flush=True)
-        print("NODE DIR:", [x for x in dir(self.node) if "event" in x.lower()], flush=True)
-
-        print("CLIENT DIR:", [x for x in dir(self.client) if "event" in x.lower()], flush=True)
-
-        print("NODE DICT:", getattr(self.node, "__dict__", None), flush=True)
-
-        await self.node.watch(3)
-        await self.node.wait_for_variables()
-        print("EVENT DESCRIPTION: ")
-        for x in self.node.event_description():
-            print(x)
-
         # IMPORTANT: give TDM time to publish first sensor frame
         for _ in range(50):
             self.client.process_waiting_messages()
