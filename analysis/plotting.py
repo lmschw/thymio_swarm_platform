@@ -28,7 +28,8 @@ def plot_opinion_distribution(csv_path):
     # Plot.
     ax = percentages.plot(
         figsize=(10, 6),
-        linewidth=2
+        linewidth=2,
+        color=["black", "dimgray", "lightgray"]
     )
 
     ax.set_xlabel("Tick")
@@ -39,7 +40,7 @@ def plot_opinion_distribution(csv_path):
 
     ax.legend(
         title="Opinion",
-        labels=[f"Option {i}" for i in percentages.columns]
+        labels=["black", "grey", "white"]
     )
 
     plt.tight_layout()
@@ -47,4 +48,6 @@ def plot_opinion_distribution(csv_path):
 
 
 if __name__ == "__main__":
-    plot_opinion_distribution("results/weighted_voter_quality_switch-run/processed/aggregated.csv")
+    plot_opinion_distribution(
+        "results/weighted_voter_quality_switch-run/processed/aggregated.csv"
+    )
