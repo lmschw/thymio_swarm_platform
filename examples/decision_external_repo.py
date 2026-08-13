@@ -21,10 +21,29 @@ from swarm_platform.utils.unpack_results import (
 )
 
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
-SESSION_NAME = "active-inference-noisy-quality-switch-run"
-EXPERIMENT_NAME = "active_inference_noisy_quality_switch"
-HOSTS = []
-EXPERIMENT_DURATION_SECONDS = 5 * 60
+SESSION_NAME = "weighted_voter_quality_switch-run"
+EXPERIMENT_NAME = "weighted_voter_quality_switch"
+HOSTS = ["thymio-01", 
+        "thymio-03", 
+        "thymio-04",
+        "thymio-05",
+        "thymio-06",
+        "thymio-07",
+        "thymio-08",
+        "thymio-09",
+        "thymio-10",
+        "thymio-13",
+        "thymio-15",
+        "thymio-17",
+        "thymio-18",
+        "thymio-19",
+        "thymio-20",
+        "thymio-22",
+        "thymio-23",
+        "thymio-24",
+        "thymio-25",
+        ]
+EXPERIMENT_DURATION_TICKS = 1800
 
 
 async def main() -> None:
@@ -56,10 +75,10 @@ async def main() -> None:
         print("Activating session...")
         session = project.session(SESSION_NAME)
 
-        print(f"Starting (duration={EXPERIMENT_DURATION_SECONDS}s)...")
+        print(f"Starting (duration={EXPERIMENT_DURATION_TICKS} ticks)...")
         await session.start(
             EXPERIMENT_NAME,
-            config={"duration_seconds": EXPERIMENT_DURATION_SECONDS},
+            config={"duration_ticks": EXPERIMENT_DURATION_TICKS},
         )
 
         # Each robot stops itself once duration_seconds elapses (see
@@ -71,21 +90,9 @@ async def main() -> None:
 
         while True:
 
-            remaining = EXPERIMENT_DURATION_SECONDS - (time.monotonic() - start_time)
-            if remaining <= 0:
-                print(f"\n{EXPERIMENT_DURATION_SECONDS}s elapsed - stopping automatically.")
-                break
-
-            try:
-                cmd = (await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(
-                        None, input, "\n[p]ause  [r]esume  [s]top > "
-                    ),
-                    timeout=remaining,
-                )).strip().lower()
-            except asyncio.TimeoutError:
-                print(f"\n{EXPERIMENT_DURATION_SECONDS}s elapsed - stopping automatically.")
-                break
+            cmd = (await asyncio.get_event_loop().run_in_executor(
+                None, input, "\n[p]ause  [r]esume  [s]top > "
+            )).strip().lower()
 
             if cmd == "p":
                 print("Pausing...")
