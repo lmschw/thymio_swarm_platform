@@ -1,8 +1,12 @@
+from itertools import cycle
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# Cycled per robot so trajectories stay distinguishable in grayscale prints.
+TRAJECTORY_COLORS = ["black", "dimgray", "lightgray"]
 
 
 def load_trajectories(
@@ -62,6 +66,7 @@ def plot_trajectories(
     trajectories: Dict[str, pd.DataFrame],
     output_file: Optional[str | Path] = None,
     title: str = "Robot trajectories",
+    labels: Optional[List[str]] = None,
 ) -> None:
     """
     Plot reconstructed robot trajectories.
@@ -81,13 +86,28 @@ def plot_trajectories(
 
     title:
         Plot title.
+
+    labels:
+        Optional display labels, matched positionally to
+        ``trajectories``' iteration order. Falls back to the hostname
+        for any trajectory beyond the end of this list.
     """
 
     fig, ax = plt.subplots(
         figsize=(10, 8)
     )
 
-    for hostname, trajectory in trajectories.items():
+    colors = cycle(TRAJECTORY_COLORS)
+
+    for index, (hostname, trajectory) in enumerate(trajectories.items()):
+
+        color = next(colors)
+
+        label = (
+            labels[index]
+            if labels is not None and index < len(labels)
+            else hostname
+        )
 
         x = trajectory["pose.x"]
         z = trajectory["pose.z"]
@@ -96,7 +116,8 @@ def plot_trajectories(
             x,
             z,
             linewidth=2,
-            label=hostname,
+            color=color,
+            label=label,
         )
 
         # start marker
@@ -105,6 +126,7 @@ def plot_trajectories(
             z.iloc[0],
             marker="o",
             s=80,
+            color=color,
         )
 
         # end marker
@@ -113,6 +135,7 @@ def plot_trajectories(
             z.iloc[-1],
             marker="X",
             s=100,
+            color=color,
         )
 
         # direction arrows
@@ -130,17 +153,19 @@ def plot_trajectories(
             scale_units="xy",
             scale=1,
             width=0.003,
+            color=color,
         )
 
         # label end position
         ax.annotate(
-            hostname,
+            label,
             (
                 x.iloc[-1],
                 z.iloc[-1],
             ),
             xytext=(5, 5),
             textcoords="offset points",
+            color=color,
         )
 
     ax.set_title(title)
