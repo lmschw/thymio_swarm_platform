@@ -226,6 +226,11 @@ class SwarmDaemon:
                 "type": "tracking_updated"
             }
 
+        if t == "internal_update":
+            if self.experiment:
+                await self.experiment.internal_update(msg["update_type"])
+            return {"type": "internal_update_sent"}
+
         print(f"[DAEMON] unknown message type: {t}", flush=True)
         return {"type": "error", "error": "unknown_command"}
 

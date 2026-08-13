@@ -168,3 +168,14 @@ class SwarmSession:
             self.session_id,
             self.hosts
         )
+
+    async def send_internal_update(self, update_type: str) -> None:
+        """
+        Sends a signal to the pis to cause an internal update event.
+        """
+        await self.client.broadcast({
+            "type": "internal_update",
+            "session_id": self.session_id,
+            "hosts": self.hosts,
+            "update_type": update_type
+        })

@@ -44,7 +44,17 @@ HOSTS = ["thymio-01",
         "thymio-25",
         ]
 EXPERIMENT_DURATION_SECONDS = 5
+EXPERIMENT_SWAP_SECONDS = 2
 
+async def send_swap_command(session, start_time):
+    target_time = start_time + EXPERIMENT_SWAP_SECONDS
+    delay = target_time - time.monotonic()
+
+    if delay > 0:
+        await asyncio.sleep(delay)
+
+    print(f"Sending swap command at {time.monotonic() - start_time:.3f}s")
+    await session.send_internal_update("swap")
 
 async def main() -> None:
     """Run the decision-making example end-to-end against the coordinator.
@@ -76,16 +86,14 @@ async def main() -> None:
         session = project.session(SESSION_NAME)
 
         print(f"Starting (duration={EXPERIMENT_DURATION_SECONDS}s)...")
+        start_time = time.monotonic()
         await session.start(
             EXPERIMENT_NAME,
         )
+        swap_task = asyncio.create_task(
+            send_swap_command(session, start_time)
+        )
 
-        # Each robot stops itself once duration_seconds elapses (see
-        # `duration_seconds` on the experiment classes), but this script
-        # would otherwise sit forever at the input() prompt waiting for a
-        # manual "s" - race the prompt against the same deadline so it
-        # moves on to collect/delete logs on its own once time is up.
-        start_time = time.monotonic()
 
         while True:
 
