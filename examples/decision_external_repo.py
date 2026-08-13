@@ -4,7 +4,7 @@ Connects to the coordinator, installs and activates the
 `thymio_decision_making` project on a fixed set of hosts, starts the
 `active_inference_noisy_quality_switch` experiment session (active
 inference under elevated observation noise, with option 0/1 qualities
-swapping at tick 1200), and lets the user interactively pause/resume/stop
+swapping 60s into the run), and lets the user interactively pause/resume/stop
 it before collecting and deleting logs. The session is configured with a
 fixed EXPERIMENT_DURATION_SECONDS (5 minutes) so it stops itself even if
 nobody presses "s", keeping runs comparable. On exit (including via

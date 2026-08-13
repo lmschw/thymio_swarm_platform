@@ -148,6 +148,57 @@ class SwarmClient:
             )
         }
 
+    async def broadcast_per_host(
+        self,
+        base_message: Dict[str, Any],
+        host_overrides: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Broadcast a message to all available robots, with a per-host config override.
+
+        Like `broadcast`, but each robot's "config" is the base message's
+        "config" merged with that robot's entry in `host_overrides` (if
+        any), so different robots can receive different experiment
+        configuration (e.g. a different role/genome) in the same
+        `start_experiment` round.
+
+        Args:
+            base_message: The message to send, shared by all robots except
+                for the per-host "config" override.
+            host_overrides: Mapping of hostname to a config dict to merge
+                on top of `base_message["config"]` for that host.
+
+        Returns:
+            A dict containing the response for every robot, keyed by its
+            hostname.
+        """
+        robots = await self.list_robots()
+
+        base_config = base_message.get("config", {})
+
+        def _message_for(hostname: str) -> Dict[str, Any]:
+            override = host_overrides.get(hostname)
+            if not override:
+                return base_message
+            return {
+                **base_message,
+                "config": {**base_config, **override},
+            }
+
+        responses = await asyncio.gather(
+            *(
+                self.send(robot, _message_for(hostname))
+                for hostname, robot in robots.items()
+            )
+        )
+
+        return {
+            robot_id: response
+            for (robot_id, _), response in zip(
+                robots.items(),
+                responses,
+            )
+        }
+
     async def broadcast_tracking(self, message: Dict[str, Any]) -> None:
         """Broadcast a tracking update message to all available robots sequentially.
 

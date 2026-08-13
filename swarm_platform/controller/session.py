@@ -46,6 +46,7 @@ class SwarmSession:
         self,
         experiment: str,
         config: Optional[Dict[str, Any]] = None,
+        host_configs: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> None:
         """
         Starts a session and with it an experiment of the current project.
@@ -56,7 +57,13 @@ class SwarmSession:
 
         Params:
             - experiment (string): the name of the experiment
-            - config (dict) [optional]: the configuration of the experiment.
+            - config (dict) [optional]: the configuration of the experiment,
+                shared by every targeted host.
+            - host_configs (dict) [optional]: mapping of hostname to a
+                config dict to merge on top of ``config`` for that host,
+                so different robots can receive different experiment
+                configuration (e.g. a different role/genome) in the same
+                start.
 
         Raises:
             KeyError: If the experiment does not exist in the project config.
@@ -72,14 +79,21 @@ class SwarmSession:
                 self.project.tracking
             )
 
-
-        responses = await self.client.broadcast({
+        message = {
             "type": "start_experiment",
             "session_id": self.session_id,
             "name": experiment,
             "hosts": self.hosts,
             "config": config or {},
-        })
+        }
+
+        if host_configs:
+            responses = await self.client.broadcast_per_host(
+                message,
+                host_configs,
+            )
+        else:
+            responses = await self.client.broadcast(message)
 
         self.client._check_results(
             f"Starting experiment '{experiment}'",
