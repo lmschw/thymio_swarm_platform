@@ -16,11 +16,14 @@ import time
 
 from swarm_platform.config import COORDINATOR_IP
 from swarm_platform.controller.client import SwarmClient
+from swarm_platform.utils.unpack_results import (
+    unpack_and_aggregate,
+)
 
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
 SESSION_NAME = "active-inference-noisy-quality-switch-run"
 EXPERIMENT_NAME = "active_inference_noisy_quality_switch"
-HOSTS = ["thymio-01", "thymio-04"]
+HOSTS = []
 EXPERIMENT_DURATION_SECONDS = 5 * 60
 
 
@@ -102,6 +105,9 @@ async def main() -> None:
 
         print("Collecting logs...")
         await session.collect_logs()
+
+        unpack_and_aggregate(f"results/{SESSION_NAME}", f"results/{SESSION_NAME}/processed")
+
 
         print("Deleting logs...")
         await session.delete_logs()

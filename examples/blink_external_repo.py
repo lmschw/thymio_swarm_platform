@@ -10,7 +10,9 @@ import asyncio
 
 from swarm_platform.config import COORDINATOR_IP
 from swarm_platform.controller.client import SwarmClient
-
+from swarm_platform.utils.unpack_results import (
+    unpack_and_aggregate,
+)
 
 async def main() -> None:
     """Run the blink example end-to-end against the coordinator.
@@ -21,12 +23,16 @@ async def main() -> None:
     """
 
     client = SwarmClient(COORDINATOR_IP)
+
+    repository_link = "https://github.com/lmschw/thymio_raspberry_swarm_control"
+    experiment_name = "optitrack_positions"
+    session_name = "optitrack_positions-run"
     hosts = []
 
     #await save_robot_info_to_csv(client)
 
     project = client.project(
-        repository="https://github.com/lmschw/thymio_raspberry_swarm_control",
+        repository=repository_link,
         hosts=hosts,
     )
 
@@ -40,10 +46,10 @@ async def main() -> None:
     await project.activate()
 
     #print("Activating session...")
-    session = project.session("optitrack_positions-run")
+    session = project.session(session_name)
 
     #print("Starting...")
-    await session.start("optitrack_positions")
+    await session.start(experiment_name)
 
     while True:
 
@@ -70,8 +76,10 @@ async def main() -> None:
     # print("Collecting logs...")
     await session.collect_logs()
 
+    unpack_and_aggregate(f"results/{session_name}", f"results/{session_name}/processed")
+
     # print("Deleting logs...")
-    #await session.delete_logs()
+    await session.delete_logs()
 
     print("Done.")
 
