@@ -43,7 +43,7 @@ HOSTS = ["thymio-01",
         "thymio-24",
         "thymio-25",
         ]
-EXPERIMENT_DURATION_TICKS = 1800
+EXPERIMENT_DURATION_SECONDS = 5
 
 
 async def main() -> None:
@@ -75,10 +75,9 @@ async def main() -> None:
         print("Activating session...")
         session = project.session(SESSION_NAME)
 
-        print(f"Starting (duration={EXPERIMENT_DURATION_TICKS} ticks)...")
+        print(f"Starting (duration={EXPERIMENT_DURATION_SECONDS}s)...")
         await session.start(
             EXPERIMENT_NAME,
-            config={"duration_ticks": EXPERIMENT_DURATION_TICKS},
         )
 
         # Each robot stops itself once duration_seconds elapses (see
@@ -90,9 +89,19 @@ async def main() -> None:
 
         while True:
 
-            cmd = (await asyncio.get_event_loop().run_in_executor(
-                None, input, "\n[p]ause  [r]esume  [s]top > "
-            )).strip().lower()
+            try:
+                cmd = await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(
+                        None, input, "\n[p]ause  [r]esume  [s]top > "
+                    ),
+                    timeout=max(0, EXPERIMENT_DURATION_SECONDS - (time.monotonic() - start_time)),
+                )
+            except asyncio.TimeoutError:
+                print("Experiment complete. Stopping...")
+                await session.stop()
+                break
+
+            cmd = cmd.strip().lower()
 
             if cmd == "p":
                 print("Pausing...")
