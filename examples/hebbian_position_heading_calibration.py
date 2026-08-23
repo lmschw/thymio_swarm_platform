@@ -17,6 +17,10 @@ One ~10s drive is normally enough. If a run looks bad, manually put each robot b
 its start position and just re-run this launcher (still with one target) rather than
 adding more targets to MOTOR_TARGETS.
 
+KNOWN_UP_AXIS is passed through so the Pi-side experiment can skip up-axis auto-detection
+entirely in favor of a value you already know for certain (see its definition below for
+why this rig sets it rather than relying on auto-detection).
+
 Deploys the `calibrate_position_heading` experiment (registered in that repo's own
 swarm_project.yaml, same REPOSITORY as hebbian_swarm_trial.py) to all HOSTS at once,
 waits for it to finish, collects logs, and prints:
@@ -52,6 +56,16 @@ EXPERIMENT_NAME = "calibrate_position_heading"
 MOTOR_TARGETS = [300]  # single attempt by default -- see module docstring for why
 HOLD_SECONDS = 10.0
 SETTLE_SECONDS = 2.0
+
+# This rig's Motive ground plane is confirmed Y-up (axis 1) by direct observation. Real
+# calibration runs showed per-robot R^2-based up-axis auto-detection disagreeing with
+# each other AND with this known-correct answer (all three picked axis 0 or 2 instead of
+# 1), most likely because a robot's tracked marker pitches slightly under acceleration/
+# deceleration -- a real, structured trend on the true up axis, not pure noise, which
+# defeats a fit-quality heuristic same as it defeats a raw-slope one. Skip guessing
+# entirely and tell the experiment what's already known. Set to None to fall back to
+# auto-detection (e.g. if you move to a different, uncharacterized rig).
+KNOWN_UP_AXIS = 1
 # Wall-clock budget: len(targets) * (hold + settle) per robot, run in parallel across
 # HOSTS, plus a fixed buffer for install/activate/start round-trip latency.
 RUN_SECONDS = len(MOTOR_TARGETS) * (HOLD_SECONDS + SETTLE_SECONDS) + 15
@@ -78,6 +92,7 @@ async def main():
         "motor_targets": MOTOR_TARGETS,
         "hold_seconds": HOLD_SECONDS,
         "settle_seconds": SETTLE_SECONDS,
+        "known_up_axis": KNOWN_UP_AXIS,
     }
     host_configs = {h: {"self_hostname": h} for h in HOSTS}
 
