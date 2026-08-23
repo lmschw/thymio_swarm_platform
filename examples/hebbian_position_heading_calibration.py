@@ -123,23 +123,35 @@ async def main():
            f"shared value until you understand why"))
     print(f"MOTOR_UNITS_PER_MPS = {mean_units_per_mps:.2f}")
 
-    # HEADING_OFFSET_RAD: per-robot AND aggregated -- flag disagreement rather than hide it.
-    print("\n=== HEADING_OFFSET_RAD (per robot, then aggregated) ===")
-    print("ROTATION_SIGN is NOT determined by this test -- pick whichever column matches "
-          "your separately-observed ROTATION_SIGN, for BOTH the per-robot and aggregated lines.")
+    # HEADING_OFFSET_RAD: PER-ROBOT, not aggregated to one shared constant -- real robots
+    # have disagreed by more than measurement noise would explain (their rigid bodies
+    # most likely weren't defined with the same "front" convention in Motive), so
+    # controller_config.py's HEADING_OFFSET_RAD is a dict keyed by hostname. Print a
+    # ready-to-paste dict literal for each ROTATION_SIGN hypothesis -- pick whichever
+    # one matches your separately-observed ROTATION_SIGN.
+    print("\n=== HEADING_OFFSET_RAD (per robot -- paste directly into controller_config.py) ===")
+    print("ROTATION_SIGN is NOT determined by this test -- pick whichever dict below matches "
+          "your separately-observed ROTATION_SIGN.")
+    print("\nif ROTATION_SIGN = 1.0:")
+    print("HEADING_OFFSET_RAD = {")
     for _, row in summary.iterrows():
-        print(f"  {row['hostname']}: if ROTATION_SIGN= 1.0 -> {row['heading_offset_if_rotation_sign_positive']:+.4f}"
-              f"   if ROTATION_SIGN=-1.0 -> {row['heading_offset_if_rotation_sign_negative']:+.4f}")
+        print(f'    "{row["hostname"]}": {row["heading_offset_if_rotation_sign_positive"]:+.4f},')
+    print("}")
+    print("\nif ROTATION_SIGN = -1.0:")
+    print("HEADING_OFFSET_RAD = {")
+    for _, row in summary.iterrows():
+        print(f'    "{row["hostname"]}": {row["heading_offset_if_rotation_sign_negative"]:+.4f},')
+    print("}")
+
     pos_vals = summary["heading_offset_if_rotation_sign_positive"].to_numpy()
-    neg_vals = summary["heading_offset_if_rotation_sign_negative"].to_numpy()
     pos_spread = float(pos_vals.max() - pos_vals.min()) if len(pos_vals) > 1 else 0.0
-    print(f"  MEAN if ROTATION_SIGN= 1.0 -> {pos_vals.mean():+.4f}  "
-          f"MEAN if ROTATION_SIGN=-1.0 -> {neg_vals.mean():+.4f}")
     if pos_spread > HEADING_DISAGREEMENT_THRESHOLD_RAD:
-        print(f"  WARNING: robots disagree by up to {pos_spread:.4f} rad -- more than "
-              f"measurement noise likely explains ({HEADING_DISAGREEMENT_THRESHOLD_RAD} rad "
-              f"threshold). Their rigid bodies may not share the same 'front' convention in "
-              f"Motive; consider per-robot HEADING_OFFSET_RAD instead of one shared constant.")
+        print(f"\nNote: robots disagree by up to {pos_spread:.4f} rad (> this script's "
+              f"{HEADING_DISAGREEMENT_THRESHOLD_RAD} rad noise threshold) -- expected, and "
+              f"exactly why this is per-robot rather than one shared value. Just make sure "
+              f"every robot you're deploying actually has its own entry above (or falls back "
+              f"to HEADING_OFFSET_RAD_DEFAULT with a one-time warning, printed by pose_utils.py "
+              f"on the Pi -- see controller_config.py).")
 
     print("\nUpdate POSITION_AXES, HEADING_OFFSET_RAD, and MOTOR_UNITS_PER_MPS in "
           "energy_efficient_flocking's ants26_replication/hardware_deployment/"
