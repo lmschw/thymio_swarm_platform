@@ -23,6 +23,7 @@ from swarm_platform.utils.unpack_results import (
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
 SESSION_NAME = "weighted_voter_baseline-run"
 EXPERIMENT_NAME = "weighted_voter_baseline"
+
 HOSTS = ["thymio-01", 
         "thymio-03", 
         "thymio-04",
@@ -43,8 +44,9 @@ HOSTS = ["thymio-01",
         "thymio-24",
         "thymio-25",
         ]
-EXPERIMENT_DURATION_SECONDS = 5
-EXPERIMENT_SWAP_SECONDS = 2
+
+EXPERIMENT_DURATION_SECONDS = 15 * 60  
+EXPERIMENT_SWAP_SECONDS = 6 * 60 # set to 0 to disable the swap command, or to a value >= EXPERIMENT_DURATION_SECONDS to have it ignored
 
 async def send_swap_command(session, start_time):
     target_time = start_time + EXPERIMENT_SWAP_SECONDS
@@ -90,13 +92,14 @@ async def main() -> None:
         await session.start(
             EXPERIMENT_NAME,
         )
-        swap_task = asyncio.create_task(
-            send_swap_command(session, start_time)
-        )
 
+        # only send a swap command if the swap time is within the experiment duration
+        if EXPERIMENT_SWAP_SECONDS > 0 and EXPERIMENT_SWAP_SECONDS < EXPERIMENT_DURATION_SECONDS:
+            swap_task = asyncio.create_task(
+                send_swap_command(session, start_time)
+            )
 
         while True:
-
             try:
                 cmd = await asyncio.wait_for(
                     asyncio.get_event_loop().run_in_executor(
