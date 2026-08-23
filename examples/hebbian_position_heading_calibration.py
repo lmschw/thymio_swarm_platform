@@ -2,18 +2,26 @@
 calibration experiment -- run this BEFORE hebbian_swarm_trial.py (same directory).
 SUPERSEDES both hebbian_pose_calibration.py and hebbian_speed_calibration.py: the PI-side
 experiment (diagnostics/calibrate_position_heading_experiment.py) now derives
-POSITION_AXES, HEADING_OFFSET_RAD, AND MOTOR_UNITS_PER_MPS from one straight-line-drive
-sweep, instead of a manual eyeball-the-live-feed pass plus a separate speed sweep. See
-that repo's ants26_replication/hardware_deployment/README.md "Calibration" section and
+POSITION_AXES, HEADING_OFFSET_RAD, AND MOTOR_UNITS_PER_MPS from one straight-line drive,
+instead of a manual eyeball-the-live-feed pass plus a separate speed sweep. See that
+repo's ants26_replication/hardware_deployment/README.md "Calibration" section and
 calibrate_position_heading_experiment.py's own docstring for what it measures and why
 (no wheel odometry on this platform, so OptiTrack position deltas are the only ground
 truth available).
 
+MOTOR_TARGETS defaults to a SINGLE value, not a multi-point sweep: real Thymios don't
+drive perfectly straight, and this platform can't drive a robot back to an exact start
+position/heading between legs, so a multi-leg sweep lets one bad/curved leg physically
+displace every leg after it (see calibrate_position_heading_experiment.py's docstring).
+One ~10s drive is normally enough. If a run looks bad, manually put each robot back at
+its start position and just re-run this launcher (still with one target) rather than
+adding more targets to MOTOR_TARGETS.
+
 Deploys the `calibrate_position_heading` experiment (registered in that repo's own
 swarm_project.yaml, same REPOSITORY as hebbian_swarm_trial.py) to all HOSTS at once,
-waits for the sweep to finish, collects logs, and prints:
+waits for it to finish, collects logs, and prints:
   - a per-robot table (position axes, heading offset for each ROTATION_SIGN hypothesis,
-    motor units per m/s, and whether that robot's own legs agreed with each other)
+    motor units per m/s)
   - POSITION_AXES/MOTOR_UNITS_PER_MPS recommendations aggregated across ALL robots (these
     are shared constants -- one controller_config.py is deployed to every Pi)
   - HEADING_OFFSET_RAD is reported per-robot AND aggregated, but flagged if robots
@@ -41,7 +49,7 @@ HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
 SESSION_NAME = "calibrate-position-heading-run"
 EXPERIMENT_NAME = "calibrate_position_heading"
 
-MOTOR_TARGETS = [100, 200, 300, 400, 500]
+MOTOR_TARGETS = [300]  # single attempt by default -- see module docstring for why
 HOLD_SECONDS = 10.0
 SETTLE_SECONDS = 2.0
 # Wall-clock budget: len(targets) * (hold + settle) per robot, run in parallel across
