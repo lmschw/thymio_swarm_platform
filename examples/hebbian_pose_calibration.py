@@ -10,7 +10,7 @@ values live over SSH instead (see below). This script just starts/stops the sess
 gets out of the way.
 
 How to actually calibrate, once this is running:
-1. SSH into ONE Pi at a time (e.g. `ssh thymio-15`) and run:
+1. SSH into ONE Pi at a time (e.g. `ssh thymio-17`) and run:
        journalctl -u swarm-daemon.service -f
    to watch that robot's own printed pose lines live (swarm-daemon.service is how the
    platform runs the daemon on every Pi -- see setup_scripts/swarm_platform_setup.sh).
@@ -35,7 +35,7 @@ from swarm_platform.config import COORDINATOR_IP
 from swarm_platform.controller.client import SwarmClient
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
-HOSTS = ["thymio-15", "thymio-16", "thymio-17"]
+HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
 SESSION_NAME = "print-poses-calibration"
 EXPERIMENT_NAME = "print_poses"
 

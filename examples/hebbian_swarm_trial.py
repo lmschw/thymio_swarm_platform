@@ -33,7 +33,7 @@ from swarm_platform.controller.client import SwarmClient
 from swarm_platform.utils.unpack_results import unpack_and_aggregate
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
-HOSTS = ["thymio-15", "thymio-16", "thymio-17"]
+HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
 SESSION_NAME = "hebbian-swarm-3agent-run"
 EXPERIMENT_NAME = "hebbian_swarm"
 GENOME_PATH_ON_PI = "hebbian_save_battery_avoid_all_best.npy"
