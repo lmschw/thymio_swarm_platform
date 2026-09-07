@@ -13,7 +13,7 @@ from pathlib import Path
 from collections import defaultdict
 import pandas as pd
 
-results_dir = Path("results")
+results_dir = Path("results/colour_tests/colour-test-18")
 
 # Per-file summary
 summary = []
@@ -35,9 +35,10 @@ for csv_file in results_dir.rglob("*.csv"):
         "file": csv_file.name,
     }
 
-    for col in df.columns:
-        row[f"{col}_mean"] = df[col].mean()
-        row[f"{col}_std"] = df[col].std()
+    for col in ['reflected_0', 'reflected_1']:
+        s = pd.to_numeric(df[col])
+        row[f"{col}_mean"] = s.mean()
+        row[f"{col}_std"] = s.std()
 
     summary.append(row)
 
@@ -51,9 +52,11 @@ for run, dfs in run_data.items():
     combined = pd.concat(dfs, ignore_index=True)
 
     row = {"run": run}
-    for col in combined.columns:
-        row[f"{col}_mean"] = combined[col].mean()
-        row[f"{col}_std"] = combined[col].std()
+
+    for col in ['reflected_0', 'reflected_1']:
+        s = pd.to_numeric(df[col])
+        row[f"{col}_mean"] = s.mean()
+        row[f"{col}_std"] = s.std()
 
     run_summary.append(row)
 
@@ -65,5 +68,5 @@ print(summary_df)
 print("\nOverall statistics by run:")
 print(run_summary_df)
 
-summary_df.to_csv("results_summary.csv", index=False)
-run_summary_df.to_csv("run_summary.csv", index=False)
+summary_df.to_csv("results_summary_thymio08.csv", index=False)
+run_summary_df.to_csv("run_summary_thymio08.csv", index=False)
