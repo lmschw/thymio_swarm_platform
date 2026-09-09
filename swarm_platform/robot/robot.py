@@ -1,4 +1,5 @@
 import asyncio
+import json
 import socket
 from typing import Any, Dict, List, Optional, Tuple
 import math
@@ -6,6 +7,7 @@ import math
 from .camera import Camera
 from .connection import ThymioConnection
 from .state import RobotState
+from ..config import COORDINATOR_IP, COORDINATOR_PORT
 from ..protocol.command import RobotCommand
 from ..utils.config import RobotConfig
 from ..tracking.pose import Pose
@@ -316,6 +318,72 @@ class Robot:
         front_intensity = intensities[0] + intensities[1] + intensities[2] + intensities[3] + intensities[4]
         rear_intensity = intensities[5] + intensities[6]
         return rx[0], intensities, front_intensity, rear_intensity
+
+    async def exchange_swarm_info(
+        self,
+        my_id: str,
+        data: Dict[str, Any],
+        timeout: float = 0.5,
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Optional, opt-in swarm-wide info exchange via the coordinator.
+
+        Pushes ``data`` for this robot (keyed by ``my_id``) up to the
+        coordinator and returns its current merged ``{id: data}`` dict
+        for the whole swarm, in the same round trip. Unlike
+        ``send``/``receive`` (the Thymio's bandwidth-limited prox.comm
+        link - one small message per tick, no sender id, only reaches
+        whoever's currently in IR range), this goes over the existing
+        coordinator TCP connection already used for
+        registration/heartbeats, so it carries arbitrary-size/precision
+        JSON and reaches every robot in the swarm. Decision-making code
+        that still wants a locality restriction (only consult *nearby*
+        robots' info) should combine this with its own proximity signal
+        - e.g. a lightweight id-only prox.comm broadcast - and filter
+        the returned dict down to ids it has recently seen that way.
+
+        This is entirely opt-in: nothing calls it unless an experiment
+        does, so robots/experiments that never call it are unaffected.
+
+        Args:
+            my_id: Key this robot's data is stored under (e.g. a short
+                per-robot id).
+            data: JSON-serializable payload to publish for this robot.
+            timeout: Seconds to wait for the coordinator before giving up.
+
+        Returns:
+            The coordinator's current ``{id: data}`` dict, including
+            this robot's own just-pushed entry. Returns ``{}`` if the
+            coordinator is unreachable or times out, rather than
+            raising - a transient coordinator hiccup should never stall
+            a control loop tick.
+        """
+        msg = {"type": "info_update", "id": str(my_id), "data": data}
+
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(COORDINATOR_IP, COORDINATOR_PORT),
+                timeout=timeout,
+            )
+            try:
+                writer.write((json.dumps(msg) + "\n").encode())
+                await writer.drain()
+                raw = await asyncio.wait_for(reader.readline(), timeout=timeout)
+            finally:
+                writer.close()
+                await writer.wait_closed()
+        except Exception:
+            return {}
+
+        if not raw:
+            return {}
+
+        try:
+            reply = json.loads(raw.decode())
+        except Exception:
+            return {}
+
+        return reply.get("data", {})
 
     async def get_global_pose(self) -> Optional[Pose]:
         """

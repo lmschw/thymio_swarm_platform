@@ -5,8 +5,17 @@ from typing import Any, Dict
 
 ROBOTS: Dict[str, Dict[str, Any]] = {}  # robot_id -> {ip, port, last_seen, capabilities}
 
+# Optional swarm-wide info relay (opt-in - see the "info_update" branch in
+# `handle()`). id -> {data, updated}. Nothing populates this unless an
+# experiment explicitly calls Robot.exchange_swarm_info(), so it has no
+# effect on experiments/projects that don't use it.
+INFO: Dict[str, Dict[str, Any]] = {}
+
 
 HEARTBEAT_TIMEOUT = 30  # seconds
+INFO_TIMEOUT = 60  # seconds - generous safety-net eviction, not the primary
+                    # recency control (that's the caller's own locality
+                    # filter, e.g. an id buffer keyed off prox.comm range)
 
 
 async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -18,6 +27,9 @@ async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> 
     - ``register``: add/update the sender in the global ``ROBOTS`` table.
     - ``heartbeat``: refresh the sender's ``last_seen`` timestamp.
     - ``list``: reply with the current contents of ``ROBOTS``.
+    - ``info_update``: publish the sender's ``data`` under ``id`` in the
+      optional swarm-info relay, and reply with the current merged dict
+      for the whole swarm (push and pull in one round trip).
     - anything else: reply with an error message.
 
     The connection is closed after the message is handled (or on
@@ -78,6 +90,20 @@ async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> 
             (json.dumps({"type": "robots", "robots": ROBOTS}) + "\n").encode()
         )
 
+    # -------------------------
+    # SWARM INFO RELAY (optional - only used by experiments that call
+    # Robot.exchange_swarm_info(); publishes the sender's data and
+    # returns everyone's latest data in the same round trip)
+    # -------------------------
+    elif msg_type == "info_update":
+        INFO[msg["id"]] = {"data": msg.get("data", {}), "updated": time.time()}
+        writer.write(
+            (json.dumps({
+                "type": "info",
+                "data": {rid: entry["data"] for rid, entry in INFO.items()},
+            }) + "\n").encode()
+        )
+
     else:
         writer.write(b'{"type":"error","msg":"unknown"}\n')
 
@@ -86,11 +112,16 @@ async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> 
 
 
 async def cleanup() -> None:
-    """Periodically evict robots that have stopped sending heartbeats.
+    """Periodically evict robots that have stopped sending heartbeats,
+    and stale entries from the optional swarm-info relay.
 
     Runs forever as a background task: every 2 seconds it scans
     ``ROBOTS`` and removes any entry whose ``last_seen`` timestamp is
-    older than ``HEARTBEAT_TIMEOUT`` seconds.
+    older than ``HEARTBEAT_TIMEOUT`` seconds, and scans ``INFO`` for
+    entries older than ``INFO_TIMEOUT`` (a safety net so a robot that
+    stopped participating - crashed, finished its experiment - doesn't
+    linger in the merged dict forever; callers wanting tighter recency
+    should filter with their own locality/freshness check on top).
 
     Returns:
         None
@@ -106,6 +137,13 @@ async def cleanup() -> None:
         for rid in to_remove:
             print(f"[REMOVE] {rid} last_seen={now - r['last_seen']:.2f}s ago")
             del ROBOTS[rid]
+
+        stale_info = [
+            rid for rid, entry in INFO.items()
+            if now - entry["updated"] > INFO_TIMEOUT
+        ]
+        for rid in stale_info:
+            del INFO[rid]
 
         await asyncio.sleep(2)
 
