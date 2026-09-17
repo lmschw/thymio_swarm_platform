@@ -40,6 +40,14 @@ echo "Using uv: ${UV_BIN}"
 "${UV_BIN}" sync
 
 #
+# Install the Python SPI-Neopixel stack, for an optional WS2812B RGB LED
+# ring (see swarm_platform/robot/led_ring.py). Plain pip packages, so safe
+# to install unconditionally -- LedRing detects at runtime whether a ring
+# is actually attached and never blocks robot startup if not.
+#
+"${UV_BIN}" pip install adafruit-blinka adafruit-circuitpython-neopixel-spi
+
+#
 # Create environment config
 #
 sudo tee /etc/swarm-platform.conf >/dev/null <<EOF

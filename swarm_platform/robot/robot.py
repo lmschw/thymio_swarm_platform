@@ -6,6 +6,7 @@ import math
 
 from .camera import Camera
 from .connection import ThymioConnection
+from .led_ring import LedRing
 from .state import RobotState
 from ..config import COORDINATOR_IP, COORDINATOR_PORT
 from ..protocol.command import RobotCommand
@@ -38,6 +39,7 @@ class Robot:
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
         self.camera = Camera()
+        self.led_ring = LedRing()
         self.hostname = socket.gethostname()
         self.tracker = tracker
         self.global_poses: Dict[str, Pose] = {}
@@ -73,19 +75,21 @@ class Robot:
         """
         Connects to the underlying Thymio node.
 
-        Also attempts to start the optional Pi camera, if one is
-        attached. Camera detection is best-effort and never raises, so a
-        robot with no camera (or a failed camera) still connects normally.
+        Also attempts to start the optional Pi camera and LED ring, if
+        attached. Detection of both is best-effort and never raises, so a
+        robot missing either (or with a failed one) still connects normally.
         """
         await self.connection.connect()
         await self.camera.start()
+        await self.led_ring.start()
 
     async def disconnect(self) -> None:
         """
         Disconnects from the underlying Thymio node and releases the
-        camera, if one was started.
+        camera and LED ring, if either was started.
         """
         await self.camera.stop()
+        await self.led_ring.stop()
         await self.connection.disconnect()
 
     async def _set_variables(self, var_dict: Dict[str, List[int]], timeout: float = 1.0) -> None:
@@ -250,6 +254,62 @@ class Robot:
             CameraError: If this robot has no camera available.
         """
         return await self.camera.capture(path)
+
+    # LED ring
+    @property
+    def has_led_ring(self) -> bool:
+        """
+        Whether this robot has a working RGB LED ring attached.
+
+        Returns:
+            True if a ring was detected and started successfully.
+        """
+        return self.led_ring.available
+
+    async def led_ring_fill(self, r: int, g: int, b: int) -> None:
+        """
+        Sets every pixel on the LED ring to the same color.
+
+        Args:
+            r: Red channel value (0-255).
+            g: Green channel value (0-255).
+            b: Blue channel value (0-255).
+
+        Raises:
+            LedRingError: If this robot has no LED ring available.
+        """
+        await self.led_ring.fill(r, g, b)
+
+    async def led_ring_set_pixel(self, index: int, r: int, g: int, b: int) -> None:
+        """
+        Sets a single LED ring pixel's color.
+
+        Args:
+            index: Index of the pixel to set (0-based).
+            r: Red channel value (0-255).
+            g: Green channel value (0-255).
+            b: Blue channel value (0-255).
+
+        Raises:
+            LedRingError: If this robot has no LED ring available.
+        """
+        await self.led_ring.set_pixel(index, r, g, b)
+
+    async def led_ring_set_pixels(self, colors: List[Tuple[int, int, int]]) -> None:
+        """
+        Sets all LED ring pixel colors at once.
+
+        Args:
+            colors: A list of (r, g, b) tuples, one per pixel, in order.
+
+        Raises:
+            LedRingError: If this robot has no LED ring available.
+        """
+        await self.led_ring.set_pixels(colors)
+
+    async def led_ring_off(self) -> None:
+        """Turns off every pixel on the LED ring. A no-op if no ring is available."""
+        await self.led_ring.off()
 
     async def state(self) -> RobotState:
         """

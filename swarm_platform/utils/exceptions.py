@@ -17,3 +17,7 @@ class RobotConnectionError(Exception):
 
 class CameraError(Exception):
     """Raised when a camera operation is attempted but no camera is available."""
+
+
+class LedRingError(Exception):
+    """Raised when an LED ring operation is attempted but no ring is available."""

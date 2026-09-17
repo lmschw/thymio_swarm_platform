@@ -104,6 +104,7 @@ class SwarmDaemon:
                 "type": "status",
                 "running": self.running_experiment,
                 "camera": self.robot.has_camera,
+                "led_ring": self.robot.has_led_ring,
             }
         
         if t in ["pause", "resume", "stop"]:
@@ -136,6 +137,7 @@ class SwarmDaemon:
 
             await self.robot.stop()
             await self.robot.top_led(0, 0, 0)
+            await self.robot.led_ring_off()
 
             self.experiment = None
             self.experiment_task = None
@@ -389,7 +391,10 @@ class SwarmDaemon:
             "robot_id": socket.gethostname(),
             "ip": self.get_ip(),
             "port": 9000,
-            "capabilities": {"camera": self.robot.has_camera},
+            "capabilities": {
+                "camera": self.robot.has_camera,
+                "led_ring": self.robot.has_led_ring,
+            },
         }
 
         reader, writer = await asyncio.open_connection(

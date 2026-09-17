@@ -36,7 +36,11 @@ REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
 HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
 SESSION_NAME = "hebbian-swarm-3agent-run"
 EXPERIMENT_NAME = "hebbian_swarm"
-GENOME_PATH_ON_PI = "hebbian_save_battery_avoid_all_best.npy"
+GENOME_PATH_ON_PI = "plain_seed123_clamped_best.npy"
+# Updated 2026-09-16 -- see energy_efficient_flocking's
+# ants26_replication/hardware_deployment/README.md "Current trial config" section for the
+# full rationale. The old genome (hebbian_save_battery_avoid_all_best.npy) is still present
+# in that directory for reference/rollback.
 EXPERIMENT_DURATION_SECONDS = 120  # first live trial: keep this short, extend once you've
                                     # watched it behave sanely for a couple of minutes.
 

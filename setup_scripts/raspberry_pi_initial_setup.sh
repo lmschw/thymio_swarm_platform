@@ -32,6 +32,14 @@ fi
 sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -d' ' -f5-8)Z"
 
 #
+# SPI (for an optional WS2812B RGB LED ring, driven over hardware SPI --
+# see swarm_platform/robot/led_ring.py). Harmless to enable even if no ring
+# is ever attached.
+#
+
+sudo raspi-config nonint do_spi 0
+
+#
 # Flatpak
 #
 
@@ -52,7 +60,7 @@ EOF
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 
-sudo usermod -aG dialout,plugdev "$USER"
+sudo usermod -aG dialout,plugdev,spi "$USER"
 
 #
 # Thymio Device Manager launcher
