@@ -31,6 +31,11 @@ class ProjectLoader:
         if project_root not in sys.path:
             sys.path.insert(0, project_root)
 
+        # The project directory is rewritten on disk by `git pull` between
+        # loads, outside the interpreter's knowledge -- refresh the import
+        # system's finder caches so it notices new/changed files there.
+        importlib.invalidate_caches()
+
         yaml_path = path / "swarm_project.yaml"
 
         with open(yaml_path, "r") as f:
@@ -46,9 +51,20 @@ class ProjectLoader:
                 info["class"].rsplit(".", 1)
             )
 
-            module = importlib.import_module(
-                module_name
-            )
+            if module_name in sys.modules:
+                # Force re-reading the module from disk. Without this, a
+                # project update mid-daemon-lifetime (update_project +
+                # activate_project) would silently keep running whatever
+                # version of the experiment code was first imported,
+                # ignoring the freshly pulled file on disk until the whole
+                # daemon process restarts.
+                module = importlib.reload(
+                    sys.modules[module_name]
+                )
+            else:
+                module = importlib.import_module(
+                    module_name
+                )
 
             experiment_cls = getattr(
                 module,
