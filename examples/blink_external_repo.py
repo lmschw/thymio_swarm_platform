@@ -25,9 +25,9 @@ async def main() -> None:
     client = SwarmClient(COORDINATOR_IP)
 
     repository_link = "https://github.com/lmschw/thymio_raspberry_swarm_control"
-    experiment_name = "optitrack_positions"
-    session_name = "optitrack_positions-run"
-    hosts = []
+    experiment_name = "led_ring_demo"
+    session_name = "led_ring_demo-run"
+    hosts = ["thymio-23"]
 
     #await save_robot_info_to_csv(client)
 

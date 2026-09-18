@@ -201,11 +201,11 @@ class Robot:
         """
         await self.connection.process_messages()
         return {
-            "forward": self.connection.node.var.get("button.forward"),
-            "backward": self.connection.node.var.get("button.backward"),
-            "left": self.connection.node.var.get("button.left"),
-            "right": self.connection.node.var.get("button.right"),
-            "center": self.connection.node.var.get("button.center"),
+            "forward": bool(self.connection.node.var.get("button.forward")[0]),
+            "backward": bool(self.connection.node.var.get("button.backward")[0]),
+            "left": bool(self.connection.node.var.get("button.left")[0]),
+            "right": bool(self.connection.node.var.get("button.right")[0]),
+            "center": bool(self.connection.node.var.get("button.center")[0]),
         }
 
     async def accelerometer(self) -> List[int]:
