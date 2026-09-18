@@ -28,7 +28,9 @@ dependencies = [
 # (see setup_scripts/add_led_ring_support.sh, which also enables SPI and
 # adds the daemon user to the "spi" group). Installed as a normal pip
 # dependency by that script; not listed as a hard dependency here since it
-# only matters -- and only imports cleanly -- on a Pi.
+# only matters -- and only imports cleanly -- on a Pi. Also requires the
+# apt package python3-lgpio (Blinka's board-detection dependency on a
+# Pi 5/bcm2712) in a venv with --system-site-packages, same as picamera2.
 # led_ring = ["adafruit-blinka", "adafruit-circuitpython-neopixel-spi"]
 
 [tool.setuptools.packages.find]

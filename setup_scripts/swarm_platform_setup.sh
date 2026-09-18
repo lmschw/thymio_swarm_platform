@@ -32,10 +32,11 @@ echo "Using uv: ${UV_BIN}"
 #
 # Install project dependencies
 #
-# The venv is created with access to system site-packages so that, if the
-# camera-enabled apt packages have been installed (see
-# setup_scripts/add_camera_support.sh), picamera2/libcamera are importable
-# from within it.
+# The venv is created with access to system site-packages so that
+# apt-installed hardware packages are importable from within it: picamera2
+# (see setup_scripts/add_camera_support.sh) and, for the LED ring, lgpio --
+# Blinka's board detection needs it on Pi 5 (bcm2712) even though the ring
+# itself is driven over SPI, not GPIO bit-banging.
 [ -d .venv ] || "${UV_BIN}" venv --system-site-packages
 "${UV_BIN}" sync
 

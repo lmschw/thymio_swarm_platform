@@ -12,6 +12,7 @@ sudo apt install -y \
     python3-pip \
     python3-venv \
     python3-picamera2 \
+    python3-lgpio \
     flatpak \
     wget \
     curl

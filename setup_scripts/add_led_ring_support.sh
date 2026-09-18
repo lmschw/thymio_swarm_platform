@@ -24,9 +24,30 @@ echo "Adding $USER to the spi group..."
 sudo usermod -aG spi "$USER"
 
 #
-# Install the Python SPI-Neopixel stack into the project venv. Unlike
-# picamera2, these are plain pip packages -- no apt/system-site-packages
-# dance needed.
+# lgpio: Blinka's board-detection needs it on a Pi 5 (bcm2712) even though
+# the ring itself is driven over SPI, not GPIO bit-banging. apt-installed
+# (like picamera2) rather than pip, since it's a compiled extension tied to
+# the system's liblgpio.
+#
+sudo apt update
+sudo apt install -y python3-lgpio
+
+#
+# The venv needs access to system site-packages to see the apt-installed
+# lgpio. Only recreate it if it doesn't already have that (e.g. from
+# add_camera_support.sh) -- recreating is disruptive (stops the daemon).
+#
+if ! .venv/bin/python -c "import lgpio" >/dev/null 2>&1; then
+    echo "Recreating venv with --system-site-packages so it can see python3-lgpio..."
+    sudo systemctl stop swarm-daemon.service
+    rm -rf .venv
+    uv venv --system-site-packages
+    uv sync
+fi
+
+#
+# Install the Python SPI-Neopixel stack into the project venv. Plain pip
+# packages, unlike lgpio/picamera2.
 #
 uv pip install adafruit-blinka adafruit-circuitpython-neopixel-spi
 
