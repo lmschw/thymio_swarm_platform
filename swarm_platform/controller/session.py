@@ -109,6 +109,7 @@ class SwarmSession:
         await self.client.broadcast({
             "type": "pause",
             "session_id": self.session_id,
+            "hosts": self.hosts,
         })
 
     async def resume(self) -> None:
@@ -120,6 +121,7 @@ class SwarmSession:
         await self.client.broadcast({
             "type": "resume",
             "session_id": self.session_id,
+            "hosts": self.hosts,
         })
 
     async def stop(self) -> None:
@@ -137,6 +139,7 @@ class SwarmSession:
         await self.client.broadcast({
             "type": "stop",
             "session_id": self.session_id,
+            "hosts": self.hosts,
         })
 
     async def collect_logs(

@@ -34,7 +34,13 @@ from swarm_platform.utils.unpack_results import unpack_and_aggregate
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
 HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
-SESSION_NAME = "hebbian-swarm-3agent-run"
+# Unique per run -- see hebbian_pose_calibration.py's identical comment: pause()/
+# resume()/stop() have no "hosts" scoping of their own, only session_id equality, so a
+# bare reused constant here meant any Pi from a previous, not-cleanly-stopped run of
+# this SAME experiment name would keep answering p/r/s for THIS run too. Confirmed as
+# the root cause of a corridor-calibration run returning garbage; this launcher drives
+# the actual real-genome swarm trial, so it was equally exposed.
+SESSION_NAME = f"hebbian-swarm-3agent-run-{int(time.time())}"
 EXPERIMENT_NAME = "hebbian_swarm"
 GENOME_PATH_ON_PI = "plain_seed123_clamped_best.npy"
 # Updated 2026-09-16 -- see energy_efficient_flocking's

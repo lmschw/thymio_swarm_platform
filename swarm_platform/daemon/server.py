@@ -141,6 +141,17 @@ class SwarmDaemon:
 
             self.experiment = None
             self.experiment_task = None
+            # Without this, a stopped daemon keeps matching any FUTURE message that
+            # happens to reuse this same session_id (e.g. a hardcoded SESSION_NAME
+            # constant re-run days later for a different robot/attempt) -- pause/resume/
+            # stop messages carry no "hosts" scoping of their own (see session.py), so
+            # session_id equality here was the only thing standing between "this robot"
+            # and "every robot that ever ran a session by this name". Confirmed real:
+            # stale/never-cleanly-stopped daemons kept responding to pause/resume
+            # broadcasts for an unrelated later calibration run under the same session
+            # name, contaminating results with phantom samples from wherever those
+            # robots physically happened to be sitting.
+            self.active_session = None
 
             return {"type": "stopped"}
 

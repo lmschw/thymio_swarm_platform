@@ -43,6 +43,7 @@ How to actually calibrate:
 """
 import asyncio
 import sys
+import time
 
 import pandas as pd
 
@@ -51,7 +52,17 @@ from swarm_platform.controller.client import SwarmClient
 from swarm_platform.utils.unpack_results import unpack_and_aggregate
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
-SESSION_NAME = "print-poses-calibration"
+# Unique per run (not a bare constant) -- pause()/resume()/stop() broadcast with no
+# "hosts" scoping of their own (see swarm_platform's session.py), relying entirely on
+# session_id equality to know which daemon a message is for. A reused constant name
+# meant any Pi that had EVER run this experiment and wasn't cleanly stopped (crash,
+# Ctrl-C, network drop) stayed listening under that name indefinitely and would answer
+# future p/r keypresses from wherever it physically happened to be sitting -- confirmed
+# as the actual cause of a "corridor calibration" run returning wildly inconsistent
+# samples. session.py's active_session-clearing fix (daemon/server.py) closes this for
+# real, but a fresh id per run is cheap insurance against any other daemon that's still
+# stuck for some other reason.
+SESSION_NAME = f"print-poses-calibration-{int(time.time())}"
 EXPERIMENT_NAME = "print_poses"
 
 
