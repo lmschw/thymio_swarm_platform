@@ -33,16 +33,26 @@ from swarm_platform.controller.client import SwarmClient
 from swarm_platform.utils.unpack_results import unpack_and_aggregate
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
-HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
+#HOSTS = ["thymio-01", "thymio-07", "thymio-08", "thymio-09", "thymio-11"]
+#HOSTS = ["thymio-01"]
+# HOSTS = ["thymio-01", "thymio-07", "thymio-08", "thymio-09", "thymio-11",
+#          "thymio-25", "thymio-19", "thymio-17",  "thymio-15", "thymio-03",
+#          "thymio-12", "thymio-18", "thymio-14", "thymio-20", "thymio-04"]
+HOSTS = ["thymio-01", "thymio-07", "thymio-08", "thymio-09", "thymio-11",
+         "thymio-25", "thymio-19", "thymio-17",  "thymio-15", "thymio-03"]
+
 # Unique per run -- see hebbian_pose_calibration.py's identical comment: pause()/
 # resume()/stop() have no "hosts" scoping of their own, only session_id equality, so a
 # bare reused constant here meant any Pi from a previous, not-cleanly-stopped run of
 # this SAME experiment name would keep answering p/r/s for THIS run too. Confirmed as
 # the root cause of a corridor-calibration run returning garbage; this launcher drives
 # the actual real-genome swarm trial, so it was equally exposed.
-SESSION_NAME = f"hebbian-swarm-3agent-run-{int(time.time())}"
+SESSION_NAME = f"hebbian-swarm-clamped-10agent-run-{int(time.time())}"
 EXPERIMENT_NAME = "hebbian_swarm"
 GENOME_PATH_ON_PI = "plain_seed123_clamped_best.npy"
+#GENOME_PATH_ON_PI = "plain_seed123_best.npy"
+#GENOME_PATH_ON_PI = "mix_1-5-20_seed123_best.npy"
+
 # Updated 2026-09-16 -- see energy_efficient_flocking's
 # ants26_replication/hardware_deployment/README.md "Current trial config" section for the
 # full rationale. The old genome (hebbian_save_battery_avoid_all_best.npy) is still present
@@ -55,10 +65,10 @@ async def main():
     client = SwarmClient(COORDINATOR_IP)
     project = client.project(REPOSITORY, HOSTS)
 
-    print("Installing...")
-    await project.install()
-    print("Updating...")
-    await project.update()
+    # print("Installing...")
+    # await project.install()
+    # print("Updating...")
+    # await project.update()
     print("Activating...")
     await project.activate()
 

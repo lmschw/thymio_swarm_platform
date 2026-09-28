@@ -24,8 +24,12 @@ from swarm_platform.controller.client import SwarmClient
 from swarm_platform.utils.unpack_results import unpack_and_aggregate
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
-HOSTS = ["thymio-01", "thymio-07", "thymio-08", "thymio-09", "thymio-11"]
-SESSION_NAME = f"lj-baseline-5agent-run-{int(time.time())}"
+# HOSTS = ["thymio-01", "thymio-07", "thymio-08", "thymio-09", "thymio-11",
+#          "thymio-25", "thymio-19", "thymio-17",  "thymio-15", "thymio-03",
+#          "thymio-12", "thymio-18", "thymio-14", "thymio-20", "thymio-04"]
+HOSTS = ["thymio-01", "thymio-07", "thymio-08", "thymio-09", "thymio-11",
+         "thymio-25", "thymio-19", "thymio-17",  "thymio-15", "thymio-03"]
+SESSION_NAME = f"lj-baseline-10agent-run-{int(time.time())}"
 EXPERIMENT_NAME = "lj_baseline"
 EXPERIMENT_DURATION_SECONDS = 120  # match the Hebbian trials' duration for a fair comparison;
                                     # shorten for a first sanity check if you want.
@@ -35,10 +39,10 @@ async def main():
     client = SwarmClient(COORDINATOR_IP)
     project = client.project(REPOSITORY, HOSTS)
 
-    print("Installing...")
-    await project.install()
-    print("Updating...")
-    await project.update()
+    # print("Installing...")
+    # await project.install()
+    # print("Updating...")
+    # await project.update()
     print("Activating...")
     await project.activate()
 
