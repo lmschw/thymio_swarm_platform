@@ -49,7 +49,12 @@ from swarm_platform.controller.client import SwarmClient
 from swarm_platform.utils.unpack_results import unpack_and_aggregate
 
 REPOSITORY = "https://github.com/lmschw/energy_efficient_flocking.git"
-HOSTS = ["thymio-17", "thymio-18", "thymio-20"]
+HOSTS = ["thymio-01", "thymio-03", "thymio-14",  "thymio-11", "thymio-25", "thymio-08", "thymio-17",
+         "thymio-15", "thymio-04", "thymio-19", "thymio-09", "thymio-07", "thymio-16", "thymio-12", "thymio-18"]
+HOSTS = ["thymio-25", "thymio-19", "thymio-17",  "thymio-15", "thymio-03",
+         "thymio-12", "thymio-18", "thymio-14", "thymio-20", "thymio-04"]
+
+#HOSTS = []
 SESSION_NAME = "calibrate-position-heading-run"
 EXPERIMENT_NAME = "calibrate_position_heading"
 
