@@ -133,6 +133,7 @@ def aggregate_csvs(
 def unpack_and_aggregate(
     zip_dir: Union[str, Path],
     output_dir: Union[str, Path],
+    filename: str = "aggregated",
 ) -> pd.DataFrame:
     """
     Extract robot logs and create aggregated CSV.
@@ -159,5 +160,5 @@ def unpack_and_aggregate(
 
     return aggregate_csvs(
         extract_dir,
-        output_dir / "aggregated.csv",
+        output_dir / f"{filename}.csv",
     )

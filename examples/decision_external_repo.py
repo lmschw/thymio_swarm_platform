@@ -11,6 +11,8 @@ even if nobody presses "s", keeping runs comparable. On exit (including
 via exception), attempts to stop the session as a cleanup step.
 """
 
+import datetime
+
 import asyncio
 import time
 
@@ -21,32 +23,40 @@ from swarm_platform.utils.unpack_results import (
 )
 
 GITHUB_URL = "https://github.com/lmschw/thymio_decision_making"
-SESSION_NAME = "weighted_voter_baseline-run"
+SESSION_NAME = "voter_swap100_run01"
 EXPERIMENT_NAME = "weighted_voter_baseline"
+EXPERIMENT_SWAP_SECONDS = 100 # set to 0 to disable the swap command, or to a value >= EXPERIMENT_DURATION_SECONDS to have it ignored
 
-HOSTS = ["thymio-01", 
-        "thymio-03", 
-        "thymio-04",
-        "thymio-05",
-        "thymio-06",
-        "thymio-07",
-        "thymio-08",
-        "thymio-09",
-        "thymio-10",
-        "thymio-13",
-        "thymio-15",
-        "thymio-17",
-        "thymio-18",
-        "thymio-19",
-        "thymio-20",
-        "thymio-22",
-        "thymio-23",
-        "thymio-24",
-        "thymio-25",
-        ]
+
+HOSTS = ["thymio-01",
+         "thymio-03",
+         "thymio-04",
+         "thymio-06",
+         "thymio-07",
+         "thymio-08",
+         "thymio-09",
+         "thymio-10",
+         "thymio-11",
+         "thymio-12",
+         "thymio-13",
+         "thymio-14",
+         "thymio-15",
+         "thymio-16",
+         "thymio-17",
+         "thymio-18",
+         "thymio-19",
+         "thymio-20",
+         "thymio-21",
+         "thymio-23",
+         "thymio-24",
+         "thymio-25",
+         "thymio-26",
+         "thymio-27",
+         "thymio-28",
+]
+
 
 EXPERIMENT_DURATION_SECONDS = 15 * 60  
-EXPERIMENT_SWAP_SECONDS = 6 * 60 # set to 0 to disable the swap command, or to a value >= EXPERIMENT_DURATION_SECONDS to have it ignored
 
 async def send_swap_command(session, start_time):
     target_time = start_time + EXPERIMENT_SWAP_SECONDS
@@ -74,6 +84,8 @@ async def main() -> None:
         #await save_robot_info_to_csv(client)
 
         project = client.project(GITHUB_URL, HOSTS)
+        
+        print("Running experiment with session: ", SESSION_NAME)
 
         print("Installing...")
         await project.install()
@@ -92,6 +104,9 @@ async def main() -> None:
         await session.start(
             EXPERIMENT_NAME,
         )
+        
+        now = datetime.datetime.now()
+        print("start time: ", now.strftime("%Y-%m-%d %H:%M:%S"))
 
         # only send a swap command if the swap time is within the experiment duration
         if EXPERIMENT_SWAP_SECONDS > 0 and EXPERIMENT_SWAP_SECONDS < EXPERIMENT_DURATION_SECONDS:
@@ -133,8 +148,7 @@ async def main() -> None:
         print("Collecting logs...")
         await session.collect_logs()
 
-        unpack_and_aggregate(f"results/{SESSION_NAME}", f"results/{SESSION_NAME}/processed")
-
+        unpack_and_aggregate(f"results/{SESSION_NAME}", f"results/{SESSION_NAME}/processed", SESSION_NAME)
 
         print("Deleting logs...")
         await session.delete_logs()
