@@ -1,18 +1,201 @@
 import asyncio
 import json
-import socket
-from typing import Any, Dict, List, Optional, Tuple
 import math
+import socket
+import time
+from enum import Enum
+from types import TracebackType
+from typing import Any, Self
 
+import numpy as np
+
+from ..config import COORDINATOR_IP, COORDINATOR_PORT
+from ..protocol.command import RobotCommand
+from ..tracking.pose import Pose
+from ..tracking.relative_pose import RelativePose
+from ..utils.config import RobotConfig
 from .camera import Camera
 from .connection import ThymioConnection
 from .led_ring import LedRing
 from .state import RobotState
-from ..config import COORDINATOR_IP, COORDINATOR_PORT
-from ..protocol.command import RobotCommand
-from ..utils.config import RobotConfig
-from ..tracking.pose import Pose
-from ..tracking.relative_pose import RelativePose
+
+
+class _WheelChannelState(Enum):
+    NOMINAL = 1,
+    HICCUP = 2
+
+class _WheelChannel:
+    """
+    Time-Delta Scaled H-Bridge Protection Controller.
+    Includes Kinematic Tethering, Thermal Bucket Estimation,
+    Hiccup Mode, and Zero-Crossing (Plug-Braking) Protection.
+    """
+    def __init__(self, v_max: float=350.0, a_max: float=400.0, t_stall_max: float=0.4, c_ratio: float=10.0, epsilon: float=5.0) -> None:
+        """
+        Parameters:
+            v_max: float - maximum allowed speed [speed units]
+            a_max: float - maximum allowed accelleration [speed units/sec]
+            t_stall_max : float - time before thermal damage on short circuit [sec]
+            c_ratio : float - thermal dissipation (cooling) ratio as coefficient of t_stall_max
+            epsilon: float - tollerance round zero [speed unit]
+        """
+        # Speed units are actually int but to avoid conversions issues
+        # the code use floats everywhere
+        self.v_max: float = abs(float(v_max))              # [speed units]
+        self.a_max: float = abs(float(a_max))              # [speed units/s] ~> [position/s^2]
+        self.t_stall_max: float = abs(float(t_stall_max))  # [s]
+        self.c_ratio: float = abs(float(c_ratio))          # Cooling ratio T_cool / T_stall
+        self.epsilon: float = abs(float(epsilon))          # Deadband noise floor
+        self.y_f_inertia: float = 0.25                     # EMA filter coef on y_m(t)
+
+        # Thermal rates [%/s]
+        if self.t_stall_max == 0.0:
+            raise ValueError("t_stall_max cannot be zero")
+
+        if self.c_ratio == 0.0:
+            raise ValueError("c_ratio cannot be zero")
+
+        self.r_heat: float = 100.0 / self.t_stall_max
+        self.r_cool: float = self.r_heat / self.c_ratio
+
+        # State variables
+        self.reset()
+
+    def reset(self) -> None:
+        self.t_prev: float | None = None
+        self.y_f_prev: float | None = None
+        self.r_s_prev: float = 0.0
+        self.Q: float = 0.0
+        self.state: _WheelChannelState = _WheelChannelState.NOMINAL
+
+    def step(self, t, r, y_m) -> tuple[float, float, _WheelChannelState]:
+        """
+        Executes one tick of the safety layer.
+
+        Parameters:
+            t   : float - Current timestamp [s]
+            r   : float - Target reference velocity from motion policy
+            y_m : float - Raw measured velocity from sensor/firmware
+
+        Returns:
+            r_s   : float - Safe reference command to driver
+            Q     : float - Current thermal stress level [0-100%]
+            state : _WheelChannelState
+        """
+        # Delta time
+        # dt(t) = T(t) - T(t-1)
+        if self.t_prev is None:
+            dt = 0.1
+        else:
+            dt = max(t - self.t_prev, 1e-6)
+
+        # Feedback signal filtering
+        # y_f(t) = alpha * y_f(t-1) + (1-alpha)*y_m(t)
+        if self.y_f_prev is None:
+            y_f = y_m
+        else:
+            y_f = self.y_f_inertia * self.y_f_prev + (1 - self.y_f_inertia) * y_m
+
+        # Dynamic Kinematic Limits
+        # E_max = a_max dt
+        # DS = .8 E_max
+        E_max = self.a_max * dt
+        delta_stall = 0.8 * E_max
+
+        # Thermal Estimation
+        # stall condition C_s(t) = |y_f(t)| <= eps and |r_s(t-1)| > DS and eps <= 0.5 DS
+        #           | R_h  if stalled
+        #   dQ(t) = | -R_c if not stalled
+        #
+        #   Q(t) = clip(Q(t-1) + dQ(t), 0, 100)
+        stall_enabled: bool = self.epsilon <= 0.5 * delta_stall  # > 0
+        stalled: bool = stall_enabled and (abs(y_f) <= self.epsilon) and (abs(self.r_s_prev) > delta_stall)
+        if stalled:
+            dQ = self.r_heat * dt
+        else:
+            dQ = -self.r_cool * dt
+
+        Q = float(np.clip(self.Q + dQ, 0.0, 100.0))
+
+        # State Machine Transition
+        # if S(t-1) is NOMINAL and Q(t) >= 100 then S(t) = HICCUP
+        # if S(t-1) is HICCUP  and Q(t) <= 0   then S(t) = NOMINAL
+        # S(t) = S(t-1) otherwise
+        state = self.state
+        if self.state == _WheelChannelState.NOMINAL and Q >= 100.0:
+            state = _WheelChannelState.HICCUP
+        elif self.state == _WheelChannelState.HICCUP and Q <= 0.0:
+            state = _WheelChannelState.NOMINAL
+
+        # Acceleration Limiter
+        #           | 0           if S(t) is HICCUP
+        #  r_a(t) = | clip(r(t), y_f(t)-E_max, y_f(t)+E_max)
+        r_a = 0.0 # HICCUP requires to stop
+        if state == _WheelChannelState.NOMINAL:
+            r_a = float(np.clip(r, y_f - E_max, y_f + E_max))
+
+        # Zero Crossing
+        # zero-crossing condition: |y_f(t)|>eps and r_a(t)y_f(t) < 0
+        #          | 0         if zero-crossing
+        # r_z(t) = | r_a(t)    if not zero-crossing
+        zero_cross: bool = (abs(y_f) > self.epsilon) and (r_a * y_f < 0)
+        r_z: float = 0.0 if zero_cross else r_a
+
+        # Speed Envelop
+        # r_s(t) = clip(r_z(t), -V_max, V_max)
+        r_s: float = float(np.clip(r_z, -self.v_max, self.v_max))
+
+        # Memory Update
+        self.t_prev = t
+        self.y_f_prev = y_f
+        self.r_s_prev = r_s
+        self.Q = Q
+        self.state = state
+
+        return r_s, self.Q, self.state
+# _WheelChannel
+
+class MotorProtection:
+    """
+    Closed-loop motor protection controller for Thymio II wheels.
+
+    Uses a 3-sample median filter on back-EMF speed readings and a
+    zero-clamped tracking leash to ensure smooth acceleration, safe
+    zero-crossing reversals, and bounded effort when a wheel is stalled.
+    """
+
+    def __init__(self, v_max=350.0, a_max=400.0, t_stall_max=0.4, c_ratio=10.0, epsilon=5.0):
+        self.left = _WheelChannel(v_max=v_max, a_max=a_max, t_stall_max=t_stall_max, c_ratio=c_ratio, epsilon=epsilon)
+        self.right = _WheelChannel(v_max=v_max, a_max=a_max, t_stall_max=t_stall_max, c_ratio=c_ratio, epsilon=epsilon)
+
+    def reset(self):
+        self.left.reset()
+        self.right.reset()
+
+    def step(self, now, target_speeds, measure_speeds) -> np.ndarray:
+        """
+        Compute safe target speeds for both wheels.
+
+        Parameters
+        ----------
+        now: float, current timestamp in seconds
+        target_speeds : np.ndarray or list/tuple of length 2
+            Desired wheel speeds [left, right].
+        measure_speeds : np.ndarray or list/tuple of length 2
+            Measured back-EMF wheel speeds [left, right].
+
+        Returns
+        -------
+        np.ndarray
+            Protected integer wheel speed commands [left, right].
+        """
+        target_arr = np.asarray(target_speeds, dtype=float)
+        measure_arr = np.asarray(measure_speeds, dtype=float)
+
+        u_left = self.left.step(now, target_arr[0], measure_arr[0])[0]
+        u_right = self.right.step(now, target_arr[1], measure_arr[1])[0]
+        return np.array([u_left, u_right], dtype=int)
+# MotorProtection
 
 class Robot:
 
@@ -25,7 +208,9 @@ class Robot:
     by an external tracking system).
     """
 
-    def __init__(self, config: Optional[RobotConfig] = None, tracker: Optional[Any] = None) -> None:
+    def __init__(self, config: RobotConfig | None = None,
+                 tracker: Any | None = None,
+                 protection: MotorProtection|None = None) -> None:
         """
         Initializes the robot with its configuration and optional tracker.
 
@@ -35,6 +220,8 @@ class Robot:
                 with default values if not provided.
             tracker: Optional external tracking client (e.g. an
                 OptiTrack client) associated with this robot.
+            protection: Optional motor protection implemetation/configuration.
+                Overriding the motor protection can destroy the hardware.
         """
         self.config = config or RobotConfig()
         self.connection = ThymioConnection()
@@ -42,10 +229,11 @@ class Robot:
         self.led_ring = LedRing()
         self.hostname = socket.gethostname()
         self.tracker = tracker
-        self.global_poses: Dict[str, Pose] = {}
+        self.global_poses: dict[str, Pose] = {}
+        self.motor_protection = protection if protection is not None else MotorProtection()
 
     # Context manager
-    async def __aenter__(self) -> "Robot":
+    async def __aenter__(self) -> Self:
         """
         Async context manager entry point; connects to the robot.
 
@@ -55,7 +243,13 @@ class Robot:
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         """
         Async context manager exit point; stops the motors and disconnects.
 
@@ -92,7 +286,7 @@ class Robot:
         await self.led_ring.stop()
         await self.connection.disconnect()
 
-    async def _set_variables(self, var_dict: Dict[str, List[int]], timeout: float = 1.0) -> None:
+    async def _set_variables(self, var_dict: dict[str, list[int]], timeout: float = 1.0) -> None:
         """
         Sets Thymio VM variables and waits for the acknowledgment.
 
@@ -110,31 +304,63 @@ class Robot:
                 self.connection.node.set_variables(var_dict),
                 timeout=timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise RuntimeError(
                 f"Timed out waiting for ack on set_variables({var_dict})"
             )
 
     # Motors
-    async def drive(self, left: int, right: int) -> None:
+    async def drive(self, left: int, right: int, now: float|None=None, speeds: list[int]|np.ndarray|None=None) -> None:
         """
-        Sets the target speed of the left and right motors.
+        Sets the target speed of the left and right motors
+        applying the protection.
 
         Args:
             left: Target speed for the left motor.
             right: Target speed for the right motor.
+            now: Current timestamp, default from time module.
+            speeds: Current wheels speeds, default from self.speed()
         """
 
+        if now is None:
+            now = time.perf_counter()
+
+        if speeds is None:
+            speeds = await self.speed()
+
+        # mandatory to apply the protection before drive
+        target = [left, right]
+        wheels_vel = self.motor_protection.step(now, target, speeds)
+
         await self._set_variables({
-            "motor.left.target": [int(left)],
-            "motor.right.target": [int(right)],
+            "motor.left.target": [int(wheels_vel[0])],
+            "motor.right.target": [int(wheels_vel[1])],
         })
 
     async def stop(self) -> None:
         """
         Stops both motors by setting their target speed to zero.
+        ATTENTION: blocking procedure.
+        It waits until the robot stops.
         """
         await self.drive(0, 0)
+        self.motor_protection.reset()
+        """
+        """
+        start: float = time.perf_counter()
+        while time.perf_counter() - start < 5.0:
+            wheels_speed = await self.speed()
+            await self.drive(0, 0, speeds=wheels_speed)
+
+            y_left = abs(wheels_speed[0])
+            y_right = abs(wheels_speed[1])
+            if max(y_left, y_right) <= 5:
+                break
+
+            await asyncio.sleep(0.05)
+
+        await self.drive(0, 0)
+        self.motor_protection.reset()
 
     # LEDs
     async def top_led(self, r: int, g: int, b: int) -> None:
@@ -151,7 +377,7 @@ class Robot:
         })
 
     # Sensors
-    async def proximity_horizontal(self) -> List[int]:
+    async def proximity_horizontal(self) -> list[int]:
         """
         Reads the horizontal proximity sensor values.
 
@@ -161,7 +387,7 @@ class Robot:
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.horizontal"))
 
-    async def proximity_ground_delta(self) -> List[int]:
+    async def proximity_ground_delta(self) -> list[int]:
         """
         Reads the ground proximity sensor delta values.
 
@@ -171,7 +397,7 @@ class Robot:
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.delta"))
 
-    async def proximity_ground_reflected(self) -> List[int]:
+    async def proximity_ground_reflected(self) -> list[int]:
         """
         Reads the ground proximity sensor reflected light values.
 
@@ -181,7 +407,7 @@ class Robot:
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.reflected"))
 
-    async def proximity_ground_ambiant(self) -> List[int]:
+    async def proximity_ground_ambiant(self) -> list[int]:
         """
         Reads the ground proximity sensor ambient light values.
 
@@ -191,7 +417,7 @@ class Robot:
         await self.connection.process_messages()
         return list(self.connection.node.var.get("prox.ground.ambiant"))
 
-    async def buttons(self) -> Dict[str, bool]:
+    async def buttons(self) -> dict[str, bool]:
         """
         Reads the state of the robot's buttons.
 
@@ -208,7 +434,7 @@ class Robot:
             "center": bool(self.connection.node.var.get("button.center")[0]),
         }
 
-    async def accelerometer(self) -> List[int]:
+    async def accelerometer(self) -> list[int]:
         """
         Reads the accelerometer values.
 
@@ -239,7 +465,7 @@ class Robot:
         """
         return self.camera.available
 
-    async def camera_capture(self, path: Optional[str] = None) -> bytes:
+    async def camera_capture(self, path: str | None = None) -> bytes:
         """
         Captures a still image from the robot's Pi camera.
 
@@ -295,7 +521,7 @@ class Robot:
         """
         await self.led_ring.set_pixel(index, r, g, b)
 
-    async def led_ring_set_pixels(self, colors: List[Tuple[int, int, int]]) -> None:
+    async def led_ring_set_pixels(self, colors: list[tuple[int, int, int]]) -> None:
         """
         Sets all LED ring pixel colors at once.
 
@@ -311,6 +537,18 @@ class Robot:
         """Turns off every pixel on the LED ring. A no-op if no ring is available."""
         await self.led_ring.off()
 
+    async def speed(self) -> list[int]:
+        """
+        Read the current wheels speed from back-EMF sensors
+
+        Return:
+            [left, right] as estimated wheels speeds.
+        """
+        await self.connection.process_messages()
+        left = self.connection.node.var.get("motor.left.speed")[0]
+        right = self.connection.node.var.get("motor.right.speed")[0]
+        return [left, right]
+
     async def state(self) -> RobotState:
         """
         Reads the robot's full sensor/actuator state.
@@ -325,8 +563,9 @@ class Robot:
             accelerometer=await self.accelerometer(),
             buttons=await self.buttons(),
             temperature=await self.temperature(),
+            speed=await self.speed()
         )
-    
+
     async def apply(self, command: RobotCommand) -> None:
         """
         Applies a robot command by driving the motors and setting the top LED.
@@ -357,7 +596,7 @@ class Robot:
 
         self.connection.client.process_waiting_messages()
 
-    async def receive(self) -> Tuple[int, List[int], int, int]:
+    async def receive(self) -> tuple[int, list[int], int, int]:
         """
         Reads the last received proximity communication value and intensities.
 
@@ -382,9 +621,9 @@ class Robot:
     async def exchange_swarm_info(
         self,
         my_id: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         timeout: float = 0.5,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """
         Optional, opt-in swarm-wide info exchange via the coordinator.
 
@@ -432,7 +671,7 @@ class Robot:
             finally:
                 writer.close()
                 await writer.wait_closed()
-        except Exception:
+        except Exception: # noqa: BLE001
             return {}
 
         if not raw:
@@ -440,12 +679,12 @@ class Robot:
 
         try:
             reply = json.loads(raw.decode())
-        except Exception:
+        except Exception: # noqa: BLE001
             return {}
 
         return reply.get("data", {})
 
-    async def get_global_pose(self) -> Optional[Pose]:
+    async def get_global_pose(self) -> Pose | None:
         """
         Retrieves this robot's own global pose from the tracked poses.
 
@@ -456,7 +695,7 @@ class Robot:
         poses = self.global_poses
         return poses.get(self.hostname)
 
-    async def get_all_global_poses(self) -> Dict[str, Pose]:
+    async def get_all_global_poses(self) -> dict[str, Pose]:
         """
         Retrieves the global poses of all tracked robots.
 
@@ -488,8 +727,8 @@ class Robot:
 
     async def get_relative_poses(
         self,
-        hostnames: Optional[List[str]] = None,
-    ) -> Dict[str, RelativePose]:
+        hostnames: list[str] | None = None,
+    ) -> dict[str, RelativePose]:
 
         poses = await self.get_all_global_poses()
         own_pose = poses.get(self.hostname)
@@ -504,7 +743,7 @@ class Robot:
         # Use a set for efficient membership checks.
         hostname_filter = set(hostnames) if hostnames is not None else None
 
-        relative_poses: Dict[str, RelativePose] = {}
+        relative_poses: dict[str, RelativePose] = {}
 
         for hostname, pose in poses.items():
             # Never include ourselves.
@@ -514,8 +753,8 @@ class Robot:
             # If a filter was provided, only include requested robots.
             if hostname_filter is not None and hostname not in hostname_filter:
                 continue
-            
-            x, y, z = pose.position
+
+            x, _, z = pose.position
 
             # Position difference
             dx = x - ox
@@ -550,7 +789,7 @@ class Robot:
     async def get_neighbours(
         self,
         perception_range: float,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Returns all robots within perception range.
 

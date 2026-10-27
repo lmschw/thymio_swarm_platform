@@ -12,6 +12,7 @@ class RobotState:
         accelerometer: Readings from the 3-axis accelerometer.
         buttons: Mapping of button name to whether it is currently pressed.
         temperature: Current temperature reading.
+        speed: Left and right estimated motor speeds.
     """
 
     proximity: List[int]
@@ -23,3 +24,5 @@ class RobotState:
     buttons: Dict[str, bool]
 
     temperature: int
+
+    speed: List[int]
